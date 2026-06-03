@@ -1,0 +1,6 @@
+[2m23:03:55[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mEach child in a list should have a unique "key" prop.
+
+Check the render method of `App`. See https://react.dev/link/warning-keys for more information.
+[2m23:11:24[22m [31m[1m[vite][22m[39m [31m[2m(client)[22m[39m [2m[console.error] [22mEach child in a list should have a unique "key" prop.
+
+Check the render method of `App`. See https://react.dev/link/warning-keys for more information.
