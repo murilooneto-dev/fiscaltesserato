@@ -2172,6 +2172,7 @@ export default function App() {
   const [histResp,setHistResp]=useState("TODOS");
   const [relResp,setRelResp]=useState("TODOS");
   const [relGrupo,setRelGrupo]=useState("TODOS");
+  const [relTarefa,setRelTarefa]=useState("TODAS");
   const [relSomentePendentes,setRelSomentePendentes]=useState(false);
   const [configClienteBusca,setConfigClienteBusca]=useState("");
   const [configClienteRegime,setConfigClienteRegime]=useState("TODOS");
@@ -2214,7 +2215,7 @@ export default function App() {
   const [parcSel,setParcSel]=useState(null);
   const [parcBusca,setParcBusca]=useState("");
   const [parcSecao,setParcSecao]=useState("TODOS");
-  const PARC_FORM_INIT={id:"",secao:"RECEITA FEDERAL - ECAC",empresa:"",cnpj:"",regime:"",responsavel:"",local:"",jan:"",fev:"",mar:"",abr:"",mai:"",jun:"",jul:"",ago:"",set:"",out:"",nov:"",dez:"",senhas:""};
+  const PARC_FORM_INIT={id:"",secao:"RECEITA FEDERAL - ECAC",empresa:"",cnpj:"",regime:"",responsavel:"",local:"",tarefa:"",jan:"",fev:"",mar:"",abr:"",mai:"",jun:"",jul:"",ago:"",set:"",out:"",nov:"",dez:"",senhas:""};
   const [parcFormMode,setParcFormMode]=useState(null);
   const [parcForm,setParcForm]=useState(PARC_FORM_INIT);
   const [parcDeleteId,setParcDeleteId]=useState(null);
@@ -2352,7 +2353,7 @@ export default function App() {
         .catch(()=>setSaveStatus("Não foi possível salvar no banco local."));
     },600);
     return()=>clearTimeout(id);
-  },[dataLoaded,users,clientesData,state,appSettings]);
+  },[dataLoaded,users,clientesData,state,appSettings,parcelamentos]);
   useEffect(()=>{
     if(!dataLoaded||typeof EventSource==="undefined") return;
     const source=new EventSource(apiUrl("/api/events"));
@@ -2906,6 +2907,7 @@ export default function App() {
     if(user?.role==="operador") list=list.filter(c=>c.responsavel?.toUpperCase()===user.name.toUpperCase());
     else if(relResp!=="TODOS") list=list.filter(c=>c.responsavel?.toUpperCase()===relResp);
     if(relGrupo!=="TODOS") list=list.filter(c=>c.grupo===relGrupo);
+    if(relTarefa!=="TODAS") list=list.filter(c=>getClientTarefas(c).includes(relTarefa));
     const mapped=list.map(c=>{
       const ts=getClientTarefas(c);
       const cl=state[c.cnpj]?.[mesAtual];
@@ -2914,7 +2916,7 @@ export default function App() {
       return{...c,total:ts.length,feito,pendentes,pct:ts.length>0?Math.round(feito/ts.length*100):0,obs:cl?.obs||"",mit:cl?.mit||""};
     });
     return (relSomentePendentes?mapped.filter(c=>c.pendentes.length>0):mapped).sort(sortByNome);
-  },[relResp,relGrupo,relSomentePendentes,mesAtual,state,user,clientesData]);
+  },[relResp,relGrupo,relTarefa,relSomentePendentes,mesAtual,state,user,clientesData]);
 
   const histClientes=useMemo(()=>{
     if(histResp==="TODOS") return [...clientesData].sort(sortByNome);
@@ -3556,7 +3558,7 @@ export default function App() {
 
         {/* ROBÔ ISS */}
         {page==="roboiss"&&(()=>{
-          const issClientes=clientesData.filter(c=>!!c.enviaIss);
+          const issClientes=clientesData.filter(c=>!!c.enviaIss&&(user.role==="admin"||(c.responsavel||"").toUpperCase()===(user.name||"").toUpperCase()));
           const GRUPO_LABEL:Record<string,string>={normal:"Regime Normal",simples:"Simples Nacional",mei:"MEI"};
           const grupos=["TODOS",...Array.from(new Set(issClientes.map(c=>c.grupo||"").filter(Boolean))).sort()];
           const filtrados=issClientes.filter(c=>{
@@ -4219,11 +4221,181 @@ export default function App() {
                 <option value="simples">Simples</option>
                 <option value="mei">MEI</option>
               </select>
+              <select value={relTarefa} onChange={e=>setRelTarefa(e.target.value)} style={{...S.input,width:"auto",minWidth:160}}>
+                <option value="TODAS">Todas as tarefas</option>
+                {[...new Set([...TAREFAS_NORMAL,...TAREFAS_SIMPLES,...TAREFAS_MEI])].sort().map(t=><option key={t} value={t}>{t}</option>)}
+              </select>
               <label style={{display:"flex",alignItems:"center",gap:7,background:"#061729",border:"1px solid #245a7c",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#bfefff",fontWeight:700,cursor:"pointer"}}>
                 <input type="checkbox" checked={relSomentePendentes} onChange={e=>setRelSomentePendentes(e.target.checked)}/>
                 Apenas pendências
               </label>
-              <button onClick={()=>window.print()} style={{padding:"8px 18px",borderRadius:8,background:"#6366f1",color:"#fff",fontWeight:700,fontSize:13,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={()=>{
+                const now=new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+                const esc=(s:any)=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+                const respLabel=relResp==="TODOS"?"Todos":relResp;
+                const grupoLabel=relGrupo==="TODOS"?"Todos":relGrupo==="normal"?"Regime Normal":relGrupo==="simples"?"Simples Nacional":"MEI";
+                const tarefaLabel=relTarefa==="TODAS"?"Todas":relTarefa;
+                const totalCli=relData.length;
+                const concluidos=relData.filter(c=>c.pct===100).length;
+                const andamento=relData.filter(c=>c.pct>0&&c.pct<100).length;
+                const naoIniciados=relData.filter(c=>c.pct===0).length;
+                const sorted=[...relData].sort((a,b)=>a.responsavel?.localeCompare(b.responsavel)||a.pct-b.pct);
+                const pctColor=(p:number)=>p===100?"#059669":p>0?"#d97706":"#dc2626";
+                const regimeBg=(r:string)=>{const l=(r||"").toLowerCase();if(l.includes("simples"))return{bg:"#dbeafe",c:"#1d4ed8"};if(l.includes("mei"))return{bg:"#fef3c7",c:"#92400e"};return{bg:"#f1f5f9",c:"#475569"};};
+                const rows=sorted.map((c,i)=>{
+                  const pc=c.pct;
+                  const pColor=pctColor(pc);
+                  const reg=regimeBg(c.regime);
+                  const pendStr=c.pendentes.length>0?c.pendentes.join(", "):"✓ Concluído";
+                  const pendColor=c.pendentes.length>0?"#dc2626":"#059669";
+                  const rowBg=i%2===0?"#ffffff":"#f8fafc";
+                  return`<tr style="background:${rowBg}">
+<td style="padding:4pt 6pt;text-align:center;border:1pt solid #e2e8f0;font-size:7pt;color:#94a3b8;font-weight:700">${i+1}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-weight:700;color:#0f172a;font-size:8pt">${esc(c.nome)}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-family:monospace;font-size:7pt;color:#475569;white-space:nowrap">${esc(c.cnpj||c.cpf||"—")}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;text-align:center"><span style="background:${reg.bg};color:${reg.c};font-size:7pt;font-weight:700;padding:1pt 5pt;border-radius:3pt;white-space:nowrap">${esc(c.regime||"—")}</span></td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-weight:700;font-size:8pt;color:#1d4ed8">${esc(c.responsavel||"—")}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;text-align:center;white-space:nowrap">
+  <span style="font-size:8pt;font-weight:800;color:${pColor}">${pc}%</span>
+  <div style="width:100%;height:5pt;background:#e2e8f0;border-radius:3pt;margin-top:2pt;overflow:hidden"><div style="height:5pt;width:${pc}%;background:${pColor};border-radius:3pt"></div></div>
+</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-size:7pt;color:${pendColor};max-width:140pt">${esc(pendStr)}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-size:7pt;color:#475569;white-space:nowrap">${esc(c.mit||"—")}</td>
+<td style="padding:4pt 7pt;border:1pt solid #e2e8f0;font-size:7pt;color:#d97706;max-width:100pt">${esc(c.obs||"")}</td>
+</tr>`;
+                }).join("");
+                const html=`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Relatório de Controle Fiscal — ${esc(mesAtual)}</title>
+<style>
+@page{size:A4 landscape;margin:12mm 10mm 14mm 10mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt;color:#1e293b;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<!-- CABEÇALHO -->
+<table style="width:100%;border-collapse:collapse;border-bottom:3pt solid #1a3a6e;padding-bottom:10pt;margin-bottom:12pt">
+<tr>
+  <td style="width:32%;vertical-align:middle;padding-bottom:8pt">
+    <table style="border-collapse:collapse">
+      <tr>
+        <td style="vertical-align:middle;padding-right:10pt">
+          <svg width="52" height="52" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#00b4d8"/><stop offset="100%" stop-color="#0077b6"/></linearGradient>
+              <linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1a3a6e"/><stop offset="100%" stop-color="#0d2550"/></linearGradient>
+            </defs>
+            <rect x="18" y="18" width="84" height="84" rx="14" fill="url(#g1)" transform="rotate(45 60 60)"/>
+            <rect x="26" y="26" width="68" height="68" rx="10" fill="url(#g2)" transform="rotate(45 60 60)"/>
+            <text x="60" y="57" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold" font-family="Arial,sans-serif">TESSERATO</text>
+            <text x="60" y="70" text-anchor="middle" fill="#7ecfed" font-size="7" font-family="Arial,sans-serif" letter-spacing="1">CONTABILIDADE</text>
+          </svg>
+        </td>
+        <td style="vertical-align:middle">
+          <div style="font-size:16pt;font-weight:900;color:#1a3a6e;letter-spacing:1px;line-height:1.1">TESSERATO</div>
+          <div style="font-size:7pt;color:#0077b6;letter-spacing:2px;font-weight:700">CONTABILIDADE</div>
+          <div style="font-size:7pt;color:#64748b;margin-top:2pt">Gestão Fiscal &amp; Tributária</div>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td style="width:36%;text-align:center;vertical-align:middle;padding-bottom:8pt">
+    <div style="font-size:19pt;font-weight:900;color:#0f172a;letter-spacing:-0.5px;line-height:1.1">Relatório de Controle Fiscal</div>
+    <div style="font-size:11pt;color:#1a3a6e;font-weight:700;margin-top:3pt">Competência: ${esc(mesAtual)}</div>
+  </td>
+  <td style="width:32%;vertical-align:top;text-align:right;padding-bottom:8pt">
+    <table style="border-collapse:collapse;margin-left:auto;border:1pt solid #e2e8f0;background:#f8fafc">
+      <tr><td style="padding:3pt 8pt;font-size:6.5pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Gerado em</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right;white-space:nowrap">${now}</td></tr>
+      <tr><td style="padding:3pt 8pt;font-size:6.5pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Responsável</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right">${esc(respLabel)}</td></tr>
+      <tr><td style="padding:3pt 8pt;font-size:6.5pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Grupo</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right">${esc(grupoLabel)}</td></tr>
+      <tr><td style="padding:3pt 8pt;font-size:6.5pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Tarefa</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right">${esc(tarefaLabel)}</td></tr>
+      <tr><td colspan="2" style="padding:5pt 8pt;text-align:center;background:#1a3a6e;color:#fff;font-size:7.5pt;font-weight:800">${totalCli} cliente${totalCli!==1?"s":""} encontrado${totalCli!==1?"s":""}</td></tr>
+    </table>
+  </td>
+</tr>
+</table>
+
+<!-- CARDS DE RESUMO -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:12pt">
+<tr>
+  <td style="width:25%;padding:0 4pt 0 0">
+    <table style="width:100%;border-collapse:collapse;background:#e8edf8;border:1pt solid #1a3a6e22;border-radius:4pt">
+      <tr><td style="padding:8pt 12pt;text-align:center">
+        <div style="font-size:24pt;font-weight:900;color:#1a3a6e">${totalCli}</div>
+        <div style="font-size:7pt;color:#475569;font-weight:700;margin-top:2pt">TOTAL DE CLIENTES</div>
+      </td></tr>
+    </table>
+  </td>
+  <td style="width:25%;padding:0 4pt">
+    <table style="width:100%;border-collapse:collapse;background:#d1fae5;border:1pt solid #05996922">
+      <tr><td style="padding:8pt 12pt;text-align:center">
+        <div style="font-size:24pt;font-weight:900;color:#059669">${concluidos}</div>
+        <div style="font-size:7pt;color:#475569;font-weight:700;margin-top:2pt">CONCLUÍDOS (100%)</div>
+      </td></tr>
+    </table>
+  </td>
+  <td style="width:25%;padding:0 4pt">
+    <table style="width:100%;border-collapse:collapse;background:#fef3c7;border:1pt solid #d9770622">
+      <tr><td style="padding:8pt 12pt;text-align:center">
+        <div style="font-size:24pt;font-weight:900;color:#d97706">${andamento}</div>
+        <div style="font-size:7pt;color:#475569;font-weight:700;margin-top:2pt">EM ANDAMENTO</div>
+      </td></tr>
+    </table>
+  </td>
+  <td style="width:25%;padding:0 0 0 4pt">
+    <table style="width:100%;border-collapse:collapse;background:#fee2e2;border:1pt solid #dc262622">
+      <tr><td style="padding:8pt 12pt;text-align:center">
+        <div style="font-size:24pt;font-weight:900;color:#dc2626">${naoIniciados}</div>
+        <div style="font-size:7pt;color:#475569;font-weight:700;margin-top:2pt">NÃO INICIADOS</div>
+      </td></tr>
+    </table>
+  </td>
+</tr>
+</table>
+
+<!-- TABELA DE CLIENTES -->
+<table style="width:100%;border-collapse:collapse">
+<thead>
+  <tr style="background:#1a3a6e;color:#fff">
+    <th style="padding:5pt 6pt;text-align:center;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:3%">#</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:19%">CLIENTE / RAZÃO SOCIAL</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:11%">CNPJ / CPF</th>
+    <th style="padding:5pt 7pt;text-align:center;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:9%">REGIME</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:9%">RESPONSÁVEL</th>
+    <th style="padding:5pt 7pt;text-align:center;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:8%">PROGRESSO</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:29%">TAREFAS PENDENTES</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:7%">MIT</th>
+    <th style="padding:5pt 7pt;text-align:left;border:1pt solid #2d4f8a;font-size:7pt;font-weight:700;width:10%">OBSERVAÇÕES</th>
+  </tr>
+</thead>
+<tbody>
+${rows||`<tr><td colspan="9" style="padding:16pt;text-align:center;color:#94a3b8;font-size:9pt">Nenhum cliente encontrado para os filtros selecionados.</td></tr>`}
+</tbody>
+</table>
+
+<!-- RODAPÉ -->
+<table style="width:100%;border-collapse:collapse;margin-top:10pt;background:#1a3a6e">
+<tr>
+  <td style="padding:7pt 12pt;font-size:7pt;color:#7ecfed;font-weight:600">Tesserato Contabilidade · Setor Fiscal · ${esc(mesAtual)}</td>
+  <td style="padding:7pt 12pt;font-size:7pt;color:#7ecfed;text-align:center">${totalCli} cliente${totalCli!==1?"s":""} · ${concluidos} concluído${concluidos!==1?"s":""} · ${relData.filter(c=>c.pct<100).length} pendente${relData.filter(c=>c.pct<100).length!==1?"s":""}</td>
+  <td style="padding:7pt 12pt;font-size:7pt;color:#7ecfed;text-align:right;font-style:italic">Gerado em ${now} — uso interno</td>
+</tr>
+</table>
+
+</body>
+</html>`;
+                const w=window.open("","_blank","width=1280,height=900");
+                if(!w)return;
+                w.document.write(html);
+                w.document.close();
+                w.focus();
+                setTimeout(()=>w.print(),500);
+              }} style={{padding:"8px 18px",borderRadius:8,background:"#6366f1",color:"#fff",fontWeight:700,fontSize:13,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
                 Imprimir / Salvar PDF
               </button>
             </div>
@@ -4282,6 +4454,7 @@ export default function App() {
                   <div style={{fontSize:10,color:"#94a3b8",marginTop:4}}>
                     Responsável: {relResp==="TODOS"?"Todos":relResp} &nbsp;·&nbsp;
                     Grupo: {relGrupo==="TODOS"?"Todos":relGrupo==="normal"?"Regime Normal":relGrupo==="simples"?"Simples Nacional":"MEI"} &nbsp;·&nbsp;
+                    Tarefa: {relTarefa==="TODAS"?"Todas":relTarefa} &nbsp;·&nbsp;
                     Situação: {relSomentePendentes?"Apenas pendências":"Todos"}
                   </div>
                   <div style={{fontSize:9,color:"#b0b8c8",marginTop:2}}>Gerado em: {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})}</div>
@@ -4645,8 +4818,8 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Row 3 – Regime + Local */}
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:20}}>
+                    {/* Row 3 – Regime + Local + Tarefa */}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:14,marginBottom:20}}>
                       <div>
                         <label style={fldLabel}>Regime</label>
                         <input placeholder="Ex: Simples Nacional, MEI..." value={parcForm.regime} onChange={e=>setParcForm(f=>({...f,regime:e.target.value}))} style={S.input}/>
@@ -4654,6 +4827,13 @@ export default function App() {
                       <div>
                         <label style={fldLabel}>Local / Tipo</label>
                         <input placeholder="Ex: SIMPLES NACIONAL, PGFN - INSS..." value={parcForm.local} onChange={e=>setParcForm(f=>({...f,local:e.target.value}))} style={S.input}/>
+                      </div>
+                      <div>
+                        <label style={fldLabel}>Tarefa Relacionada</label>
+                        <select value={parcForm.tarefa||""} onChange={e=>setParcForm(f=>({...f,tarefa:e.target.value}))} style={S.input}>
+                          <option value="">— nenhuma —</option>
+                          {[...new Set([...TAREFAS_NORMAL,...TAREFAS_SIMPLES,...TAREFAS_MEI])].sort().map(t=><option key={t} value={t}>{t}</option>)}
+                        </select>
                       </div>
                     </div>
 
@@ -4713,23 +4893,133 @@ export default function App() {
                 const pFg=(v:string)=>{if(!v)return"#9ca3af";const l=v.toLowerCase();if(l.includes("liquid")||l.includes("pago")||l.includes("quitado")||l.includes("finaliz"))return"#166534";if(l.includes("pend")||l.includes("atras")||l.includes("venc"))return"#dc2626";if(l.includes("acordo")||l.includes("parcel")||l.includes("negoc"))return"#92400e";return"#374151";};
                 const printReport=()=>{
                   const now=new Date().toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
-                  const filtroClienteLabel=parcReportFiltroCliente?(empresasComParc.find(e=>e.cnpj===parcReportFiltroCliente||e.empresa===parcReportFiltroCliente)?.empresa||parcReportFiltroCliente):"Todos";
-                  const sectionsHtml=SECOES_PARC.filter(s=>parcReportFiltroSecao==="TODOS"||s===parcReportFiltroSecao).map(secao=>{
+                  const filtroClienteLabel=parcReportFiltroCliente?(empresasComParc.find(e=>e.cnpj===parcReportFiltroCliente||e.empresa===parcReportFiltroCliente)?.empresa||parcReportFiltroCliente):"Todos os clientes";
+                  const secoesAtivas=SECOES_PARC.filter(s=>parcReportFiltroSecao==="TODOS"||s===parcReportFiltroSecao).filter(s=>reportItems.some(p=>p.secao===s));
+                  const totalParc=reportItems.length;
+                  /* cores por seção: bg claro, borda, texto escuro */
+                  const SC:Record<string,{bg:string;brd:string;txt:string}>={
+                    "RECEITA FEDERAL - ECAC":{bg:"#dbeafe",brd:"#2563eb",txt:"#1e3a8a"},
+                    "PGFN - ECAC":{bg:"#ede9fe",brd:"#7c3aed",txt:"#4c1d95"},
+                    "SEFAZ - PARCELAMENTO MULTA AUTONOMA":{bg:"#ffedd5",brd:"#ea580c",txt:"#7c2d12"},
+                    "SEFAZ - PARCELAMENTOS":{bg:"#dcfce7",brd:"#16a34a",txt:"#14532d"},
+                    "FGTS DIGITAL":{bg:"#cffafe",brd:"#0891b2",txt:"#164e63"},
+                  };
+                  const sectionsHtml=secoesAtivas.map(secao=>{
                     const grp=reportItems.filter(p=>p.secao===secao);
-                    if(grp.length===0)return"";
-                    const rows=grp.map(p=>{
-                      const months=PARC_KEYS.map(k=>{const v=p[k];return`<td style="padding:3pt 4pt;text-align:center;background:${pBg(v)};color:${pFg(v)};font-size:7.5pt;white-space:nowrap">${esc(v)||"—"}</td>`;}).join("");
-                      return`<tr><td>${esc(p.empresa)}</td><td style="font-family:monospace">${esc(p.cnpj)||"—"}</td><td>${esc(p.regime)||"—"}</td><td>${esc(p.responsavel)||"—"}</td><td>${esc(p.local)||"—"}</td>${months}</tr>`;
+                    const sc=SC[secao]||{bg:"#f1f5f9",brd:"#64748b",txt:"#1e293b"};
+                    const rows=grp.map((p,i)=>{
+                      const rowBg=i%2===0?"#ffffff":"#f8fafc";
+                      const months=PARC_KEYS.map(k=>{const v=p[k];return`<td style="padding:3pt 4pt;text-align:center;font-size:6.5pt;font-weight:600;white-space:nowrap;background:${pBg(v)};color:${pFg(v)};border:1px solid #e2e8f0">${esc(v)||"—"}</td>`;}).join("");
+                      return`<tr style="background:${rowBg}">
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;font-weight:700;color:#0f172a;font-size:7.5pt"><span style="display:inline-block;background:#e2e8f0;color:#475569;border-radius:2pt;padding:0 3pt;font-size:6pt;font-weight:800;margin-right:3pt">${i+1}</span>${esc(p.empresa)}</td>
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;font-family:monospace;font-size:7pt;color:#475569">${esc(p.cnpj)||"—"}</td>
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;color:#1d4ed8;font-size:7pt">${esc(p.regime)||"—"}</td>
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;color:#6d28d9;font-size:7pt">${esc(p.responsavel)||"—"}</td>
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;color:#475569;font-size:7pt">${esc(p.local)||"—"}</td>
+<td style="padding:3.5pt 5pt;border:1px solid #e2e8f0;color:#0891b2;font-size:7pt">${esc(p.tarefa)||"—"}</td>
+${months}
+</tr>`;
                     }).join("");
-                    return`<div class="section"><div class="section-title">${esc(secao)} &nbsp;·&nbsp; ${grp.length} parcelamento${grp.length!==1?"s":""}</div><table><thead><tr><th>Empresa</th><th>CNPJ</th><th>Regime</th><th>Responsável</th><th>Local / Tipo</th><th>JAN</th><th>FEV</th><th>MAR</th><th>ABR</th><th>MAI</th><th>JUN</th><th>JUL</th><th>AGO</th><th>SET</th><th>OUT</th><th>NOV</th><th>DEZ</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+                    return`<table style="width:100%;border-collapse:collapse;margin-bottom:0">
+<tr><td colspan="18" style="background:${sc.bg};border-left:5pt solid ${sc.brd};padding:5pt 10pt;font-size:9pt;font-weight:800;color:${sc.txt}">${esc(secao)}<span style="float:right;font-size:8pt;color:${sc.brd}">${grp.length} parcelamento${grp.length!==1?"s":""}</span></td></tr>
+<tr style="background:#1e293b;color:#e2e8f0">
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:19%">EMPRESA / RAZÃO SOCIAL</th>
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:11%">CNPJ</th>
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:8%">REGIME</th>
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:8%">RESPONSÁVEL</th>
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:9%">LOCAL / TIPO</th>
+<th style="padding:4pt 5pt;text-align:left;border:1px solid #334155;font-size:7pt;white-space:nowrap;width:8%">TAREFA</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">JAN</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">FEV</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">MAR</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">ABR</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">MAI</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">JUN</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">JUL</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">AGO</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">SET</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">OUT</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">NOV</th>
+<th style="padding:4pt 5pt;text-align:center;border:1px solid #334155;font-size:7pt;width:3%">DEZ</th>
+</tr>
+${rows}
+</table><div style="margin-bottom:18pt"></div>`;
                   }).join("");
-                  const html=`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/><title>Relatório de Parcelamentos</title><style>@page{size:A4 landscape;margin:12mm 10mm;}*{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:9pt;color:#111;margin:0;}.report-header{margin-bottom:14pt;padding-bottom:8pt;border-bottom:2px solid #333;}.report-title{font-size:15pt;font-weight:bold;margin:0 0 4pt;}.report-meta{font-size:8pt;color:#555;margin:2pt 0;}.section{margin-bottom:18pt;page-break-inside:avoid;}.section-title{font-size:9.5pt;font-weight:bold;background:#f0f0f0;border-left:4px solid #333;padding:4pt 7pt;margin-bottom:5pt;}table{width:100%;border-collapse:collapse;font-size:8pt;}thead tr{background:#1e293b;color:#fff;}th{padding:4pt 5pt;text-align:left;white-space:nowrap;font-weight:bold;border:1px solid #334155;}td{padding:3pt 5pt;border:1px solid #e2e8f0;}tbody tr:nth-child(even){background:#f9fafb;}@media print{.section{page-break-inside:avoid;}}</style></head><body><div class="report-header"><div class="report-title">Relatório de Parcelamentos</div><div class="report-meta">Gerado em: ${now}</div><div class="report-meta">Cliente: ${esc(filtroClienteLabel)} &nbsp;|&nbsp; Seção: ${esc(parcReportFiltroSecao)}</div><div class="report-meta">${reportItems.length} parcelamento${reportItems.length!==1?"s":""} encontrado${reportItems.length!==1?"s":""}</div></div>${sectionsHtml||'<p style="color:#888">Nenhum parcelamento encontrado.</p>'}</body></html>`;
-                  const w=window.open("","_blank","width=1200,height=800");
+                  const html=`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<title>Relatorio de Parcelamentos</title>
+<style>
+@page{size:A4 landscape;margin:12mm 10mm 14mm 10mm}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;font-size:8.5pt;color:#1e293b;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<!-- CABEÇALHO via TABLE para máxima compatibilidade de impressão -->
+<table style="width:100%;border-collapse:collapse;margin-bottom:12pt;border-bottom:3pt solid #1e293b;padding-bottom:10pt">
+<tr>
+  <td style="width:30%;vertical-align:top;padding-bottom:8pt">
+    <table style="border-collapse:collapse">
+      <tr>
+        <td style="vertical-align:middle;padding-right:10pt">
+          <div style="width:44pt;height:44pt;background:#1e293b;border-radius:6pt;text-align:center;line-height:44pt;color:#fff;font-size:16pt;font-weight:900;letter-spacing:-1px">FT</div>
+        </td>
+        <td style="vertical-align:middle">
+          <div style="font-size:15pt;font-weight:900;color:#1e293b;line-height:1.1">Tesserato</div>
+          <div style="font-size:8pt;font-weight:700;color:#1e293b;letter-spacing:2px">CONTABILIDADE</div>
+          <div style="font-size:7pt;color:#64748b;margin-top:2pt">Gestão Fiscal &amp; Tributária</div>
+        </td>
+      </tr>
+    </table>
+  </td>
+  <td style="width:40%;text-align:center;vertical-align:middle;padding-bottom:8pt">
+    <div style="font-size:20pt;font-weight:900;color:#0f172a;letter-spacing:-0.5px;line-height:1.1">Relatório de Parcelamentos</div>
+    <div style="font-size:8.5pt;color:#64748b;margin-top:4pt">${esc(parcReportFiltroSecao==="TODOS"?"Todas as seções":parcReportFiltroSecao)}</div>
+  </td>
+  <td style="width:30%;vertical-align:top;text-align:right;padding-bottom:8pt">
+    <table style="border-collapse:collapse;margin-left:auto;border:1pt solid #e2e8f0;background:#f8fafc;border-radius:4pt">
+      <tr><td style="padding:3pt 8pt;font-size:7pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Data de geração</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right">${now}</td></tr>
+      <tr><td style="padding:3pt 8pt;font-size:7pt;color:#94a3b8;font-weight:700;text-transform:uppercase;border-bottom:1pt solid #e2e8f0;white-space:nowrap">Cliente</td><td style="padding:3pt 8pt;font-size:7.5pt;font-weight:700;color:#1e293b;border-bottom:1pt solid #e2e8f0;text-align:right">${esc(filtroClienteLabel)}</td></tr>
+<tr><td colspan="2" style="padding:5pt 8pt;text-align:center;background:#1e293b;color:#fff;font-size:8pt;font-weight:800">${totalParc} parcelamento${totalParc!==1?"s":""} encontrado${totalParc!==1?"s":""}</td></tr>
+    </table>
+  </td>
+</tr>
+</table>
+
+<!-- SEÇÕES -->
+${sectionsHtml||`<p style="color:#94a3b8;text-align:center;padding:24pt;font-size:10pt">Nenhum parcelamento encontrado para os filtros selecionados.</p>`}
+
+<!-- LEGENDA -->
+<table style="width:100%;border-collapse:collapse;margin-top:10pt;background:#f8fafc;border:1pt solid #e2e8f0">
+<tr>
+  <td style="padding:6pt 10pt;font-size:7pt;font-weight:800;color:#475569;text-transform:uppercase;white-space:nowrap">Legenda de status mensal:</td>
+  <td style="padding:6pt 8pt"><span style="display:inline-block;width:10pt;height:10pt;background:#dcfce7;border:1pt solid #86efac;border-radius:2pt;vertical-align:middle;margin-right:4pt"></span><span style="font-size:7pt;color:#166534;vertical-align:middle">Liquidado / Pago / Quitado</span></td>
+  <td style="padding:6pt 8pt"><span style="display:inline-block;width:10pt;height:10pt;background:#fee2e2;border:1pt solid #fca5a5;border-radius:2pt;vertical-align:middle;margin-right:4pt"></span><span style="font-size:7pt;color:#dc2626;vertical-align:middle">Pendente / Em atraso</span></td>
+  <td style="padding:6pt 8pt"><span style="display:inline-block;width:10pt;height:10pt;background:#fef3c7;border:1pt solid #fcd34d;border-radius:2pt;vertical-align:middle;margin-right:4pt"></span><span style="font-size:7pt;color:#92400e;vertical-align:middle">Em acordo / Parcelando</span></td>
+  <td style="padding:6pt 8pt"><span style="display:inline-block;width:10pt;height:10pt;background:#f8fafc;border:1pt solid #cbd5e1;border-radius:2pt;vertical-align:middle;margin-right:4pt"></span><span style="font-size:7pt;color:#374151;vertical-align:middle">Outros / Sem status</span></td>
+</tr>
+</table>
+
+<!-- RODAPÉ -->
+<table style="width:100%;border-collapse:collapse;margin-top:10pt;border-top:1.5pt solid #e2e8f0;padding-top:6pt">
+<tr>
+  <td style="padding-top:6pt;font-size:7pt;color:#94a3b8"><strong style="color:#475569">Tesserato Contabilidade</strong> — Sistema de Gestão Fiscal &amp; Tributária</td>
+  <td style="padding-top:6pt;font-size:7pt;color:#94a3b8;text-align:right;font-style:italic">Documento gerado em ${now} — uso interno</td>
+</tr>
+</table>
+
+</body>
+</html>`;
+                  const w=window.open("","_blank","width=1280,height=900");
                   if(!w)return;
                   w.document.write(html);
                   w.document.close();
                   w.focus();
-                  setTimeout(()=>w.print(),300);
+                  setTimeout(()=>w.print(),500);
                 };
                 return(
                   <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.82)",zIndex:1010,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setParcReportOpen(false)}>
@@ -4742,10 +5032,10 @@ export default function App() {
                             {empresasComParc.map(e=><option key={e.cnpj||e.empresa} value={e.cnpj||e.empresa}>{e.empresa}{e.cnpj?` (${e.cnpj})`:""}</option>)}
                           </select>
                           <select value={parcReportFiltroSecao} onChange={e=>setParcReportFiltroSecao(e.target.value)} style={{...S.input,width:"auto"}}>
-                            <option value="TODOS">Todos os tipos</option>
+                            <option value="TODOS">Todas as seções</option>
                             {SECOES_PARC.map(s=><option key={s} value={s}>{s}</option>)}
                           </select>
-                          <button onClick={printReport} style={{...btnAcao("#6366f1"),padding:"7px 14px",fontSize:12}}>Imprimir / PDF</button>
+<button onClick={printReport} style={{...btnAcao("#6366f1"),padding:"7px 14px",fontSize:12}}>Imprimir / PDF</button>
                           <button onClick={()=>setParcReportOpen(false)} style={{...btnAcao("#334155","#94a3b8"),padding:"7px 12px",fontSize:12}}>Fechar</button>
                         </div>
                       </div>
