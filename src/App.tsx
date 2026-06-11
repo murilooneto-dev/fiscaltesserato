@@ -4134,7 +4134,7 @@ export default function App() {
                     await persistData({manual:true});
                     setSaveStatus("Configuração salva.");
                   }}
-                  style={{...btnAcao("linear-gradient(135deg,#0077b6,#00b4d8)"),padding:"9px 20px",fontSize:12,fontWeight:700}}>
+                  style={{background:"linear-gradient(135deg,#0077b6,#00b4d8)",border:"none",color:"#fff",padding:"9px 20px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                   Salvar configuração
                 </button>
                 <button
@@ -4147,7 +4147,7 @@ export default function App() {
                       setSaveStatus(d.ok?`✓ ${d.msg}`:`Erro: ${d.error}`);
                     }catch{setSaveStatus("Erro ao conectar com o servidor.");}
                   }}
-                  style={{...btnAcao("#334155","#e2e8f0"),padding:"9px 20px",fontSize:12,fontWeight:700}}>
+                  style={{background:"#334155",border:"none",color:"#e2e8f0",padding:"9px 20px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
                   Enviar agora (teste)
                 </button>
               </div>
