@@ -22,7 +22,7 @@ await mkdir(dataDir, { recursive: true });
 
 // ─── E-MAIL / RELATÓRIOS AUTOMÁTICOS ────────────────────────────────────────
 
-let emailLastSentDate = ""; // ex: "2026-06-01" — evita envio duplo no mesmo dia
+const emailLastSentDate = ["", ""]; // índice 0 = rotina 1, índice 1 = rotina 2
 
 function getBrNow() {
   const now = new Date();
@@ -164,6 +164,54 @@ ${rows || `<tr><td colspan="8" style="padding:16pt;text-align:center;color:#94a3
 </html>`;
 }
 
+function buildLogHtml() {
+  const rows = db.prepare("SELECT * FROM task_unlock_log ORDER BY id DESC LIMIT 200").all();
+  const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const now = new Date().toLocaleString("pt-BR",{timeZone:appTimeZone});
+  if(rows.length===0) return null;
+  const trs = rows.map(r=>`
+<tr style="border-bottom:1px solid #dde">
+  <td style="padding:5pt 8pt;font-size:8pt;white-space:nowrap">${esc(r.timestamp)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt;font-weight:700">${esc(r.usuario)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt">${esc(r.empresa)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt;font-weight:700">${esc(r.tarefa)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt">${esc(r.mes)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt;color:#c0392b">${esc(r.info_antiga)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt;color:#27ae60">${esc(r.info_atual)}</td>
+  <td style="padding:5pt 8pt;font-size:8pt">${esc(r.motivo)}</td>
+</tr>`).join("");
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<title>Log de Alterações de Tarefas</title></head>
+<body style="font-family:Arial,sans-serif;margin:0;padding:0;background:#f5f5f5">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a237e;padding:18pt 24pt">
+  <tr>
+    <td style="color:#fff;font-size:14pt;font-weight:700">Tesserato Contabilidade</td>
+    <td style="color:#90caf9;font-size:10pt;text-align:right">Log de Alterações de Tarefas</td>
+  </tr>
+</table>
+<div style="padding:20pt 24pt">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8pt;border:1px solid #dde;border-collapse:collapse">
+  <thead>
+    <tr style="background:#1a237e;color:#fff">
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left;white-space:nowrap">Data/Hora</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Usuário</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Cliente</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Tarefa</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Competência</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Info Antiga</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Info Atual</th>
+      <th style="padding:7pt 8pt;font-size:8pt;text-align:left">Motivo</th>
+    </tr>
+  </thead>
+  <tbody>${trs}</tbody>
+</table>
+</div>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#1a237e;padding:10pt 24pt;margin-top:12pt">
+  <tr><td style="color:#90caf9;font-size:7pt;text-align:right">Gerado automaticamente em ${now}</td></tr>
+</table>
+</body></html>`;
+}
+
 async function sendEmailReports() {
   const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
   if (!row) return { ok: false, error: "Sem dados no banco." };
@@ -184,31 +232,32 @@ async function sendEmailReports() {
     auth: { user: cfg.emailGmailUser, pass: cfg.emailGmailPass },
   });
 
-  const erros = [];
-  for (const u of users) {
+  const attachments = users.map(u => {
     const html = buildRelatorioHtml(clientesData, state, mesAtual, u.name);
     const fileName = `Relatorio_${u.name.replace(/\s+/g, "_")}_${mesAtual.replace("/", "-")}.html`;
-    try {
-      await transporter.sendMail({
-        from: `"Tesserato Contabilidade" <${cfg.emailGmailUser}>`,
-        to: cfg.emailDestino,
-        subject: `Relatório Fiscal — ${u.name} — ${mesAtual}`,
-        html,
-        attachments: [{ filename: fileName, content: html, contentType: "text/html" }],
-      });
-      console.log(`[EMAIL] Relatório de ${u.name} enviado.`);
-    } catch (e) {
-      console.error(`[EMAIL] Erro ao enviar relatório de ${u.name}:`, e.message);
-      erros.push(`${u.name}: ${e.message}`);
-    }
+    return { filename: fileName, content: html, contentType: "text/html" };
+  });
+  const logHtml = buildLogHtml();
+  if (logHtml) attachments.push({ filename: `Log_Alteracoes_Tarefas_${mesAtual.replace("/","-")}.html`, content: logHtml, contentType: "text/html" });
+
+  try {
+    await transporter.sendMail({
+      from: `"Tesserato Contabilidade" <${cfg.emailGmailUser}>`,
+      to: cfg.emailDestino,
+      subject: `Relatórios Fiscais — ${mesAtual}`,
+      text: "SEGUE EM ANEXO RELATORIOS",
+      attachments,
+    });
+    console.log(`[EMAIL] ${attachments.length} relatório(s) enviado(s) em 1 e-mail.`);
+  } catch (e) {
+    console.error("[EMAIL] Erro ao enviar:", e.message);
+    return { ok: false, error: e.message };
   }
 
-  return erros.length === 0
-    ? { ok: true, msg: `${users.length} relatório(s) enviado(s) com sucesso.` }
-    : { ok: false, error: erros.join(" | ") };
+  return { ok: true, msg: `${attachments.length} relatório(s) enviado(s) em 1 e-mail com sucesso.` };
 }
 
-// Cron: verifica a cada minuto se é hora de enviar
+// Cron: verifica a cada minuto se é hora de enviar (checa as 2 rotinas)
 setInterval(() => {
   const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
   if (!row) return;
@@ -216,14 +265,19 @@ setInterval(() => {
   if (!cfg.emailAtivo) return;
 
   const { day, hour, minute, dateStr } = getBrNow();
-  const [hCfg, mCfg] = (cfg.emailHorario || "08:00").split(":").map(Number);
-  const diaCfg = Number(cfg.emailDiaEnvio || 1);
+  const rotinas = cfg.emailRotinas || [];
 
-  if (day === diaCfg && hour === hCfg && minute === mCfg && emailLastSentDate !== dateStr) {
-    emailLastSentDate = dateStr;
-    console.log(`[EMAIL] Disparando relatórios automáticos — ${dateStr} ${cfg.emailHorario}`);
-    sendEmailReports().then(r => console.log("[EMAIL]", r.ok ? r.msg : r.error));
-  }
+  rotinas.forEach((rotina, idx) => {
+    if (!rotina || !rotina.ativo) return;
+    const [hCfg, mCfg] = (rotina.horario || "08:00").split(":").map(Number);
+    const diaCfg = Number(rotina.diaEnvio || 1);
+    const sentKey = `${dateStr}-${idx}`;
+    if (day === diaCfg && hour === hCfg && minute === mCfg && emailLastSentDate[idx] !== sentKey) {
+      emailLastSentDate[idx] = sentKey;
+      console.log(`[EMAIL] Rotina ${idx + 1} disparando — ${dateStr} ${rotina.horario}`);
+      sendEmailReports().then(r => console.log(`[EMAIL] Rotina ${idx + 1}:`, r.ok ? r.msg : r.error));
+    }
+  });
 }, 60_000);
 
 const db = new DatabaseSync(dbPath);
@@ -274,7 +328,27 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_agenda_user_id ON agenda (user_id);
   CREATE INDEX IF NOT EXISTS idx_agenda_data ON agenda (data_compromisso);
+
+  CREATE TABLE IF NOT EXISTS task_unlock_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cnpj TEXT NOT NULL,
+    empresa TEXT NOT NULL,
+    tarefa TEXT NOT NULL,
+    info_antiga TEXT,
+    info_atual TEXT,
+    mes TEXT NOT NULL,
+    motivo TEXT NOT NULL,
+    usuario TEXT NOT NULL,
+    timestamp TEXT NOT NULL
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_task_unlock_log_timestamp ON task_unlock_log (timestamp);
+  CREATE INDEX IF NOT EXISTS idx_task_unlock_log_cnpj ON task_unlock_log (cnpj);
 `);
+
+// Migration: adiciona colunas info_antiga/info_atual se não existirem
+try { db.exec("ALTER TABLE task_unlock_log ADD COLUMN info_antiga TEXT"); } catch {}
+try { db.exec("ALTER TABLE task_unlock_log ADD COLUMN info_atual TEXT"); } catch {}
 
 const mimeTypes = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -670,6 +744,26 @@ async function handleApi(req, res) {
     const result = db.prepare("DELETE FROM agenda WHERE id=? AND user_id=?").run(id, userId);
     if (result.changes === 0) return sendJson(res, 404, { ok: false, error: "Compromisso não encontrado." });
     return sendJson(res, 200, { ok: true });
+  }
+
+  // ── LOG DE DESBLOQUEIO DE TAREFAS ──────────────────────────────────────────
+  if (requestUrl.pathname === "/api/task-unlock-log" && req.method === "POST") {
+    try {
+      const body = await readBody(req);
+      const { cnpj, empresa, tarefa, mes, motivo, usuario, infoAntiga, infoAtual } = JSON.parse(body);
+      if (!cnpj || !tarefa || !motivo || !usuario) return sendJson(res, 400, { ok: false, error: "Campos obrigatórios ausentes." });
+      const timestamp = new Date().toLocaleString("pt-BR", { timeZone: appTimeZone, day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", second:"2-digit" });
+      db.prepare("INSERT INTO task_unlock_log (cnpj, empresa, tarefa, mes, motivo, usuario, timestamp, info_antiga, info_atual) VALUES (?,?,?,?,?,?,?,?,?)")
+        .run(cnpj, empresa || cnpj, tarefa, mes, motivo, usuario, timestamp, infoAntiga||"", infoAtual||"");
+      return sendJson(res, 200, { ok: true });
+    } catch (e) {
+      return sendJson(res, 400, { ok: false, error: e.message });
+    }
+  }
+
+  if (requestUrl.pathname === "/api/task-unlock-log" && req.method === "GET") {
+    const rows = db.prepare("SELECT * FROM task_unlock_log ORDER BY id DESC LIMIT 500").all();
+    return sendJson(res, 200, { ok: true, logs: rows });
   }
 
   if (requestUrl.pathname === "/api/email-report/send-now" && req.method === "POST") {

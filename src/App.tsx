@@ -2199,7 +2199,7 @@ export default function App() {
   const [deletionLogOpen,setDeletionLogOpen]=useState(false);
   const [deletionLogItems,setDeletionLogItems]=useState<any[]>([]);
   const [deletionLogLoading,setDeletionLogLoading]=useState(false);
-  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailDiaEnvio:"1",emailHorario:"08:00",emailAtivo:false});
+  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailAtivo:false,emailRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}]});
   const [configMsg,setConfigMsg]=useState("");
   const [dteFile,setDteFile]=useState(null);
   const [sistemaFile,setSistemaFile]=useState(null);
@@ -2219,6 +2219,17 @@ export default function App() {
   const [parcFormMode,setParcFormMode]=useState(null);
   const [parcForm,setParcForm]=useState(PARC_FORM_INIT);
   const [parcDeleteId,setParcDeleteId]=useState(null);
+  // Trava de tarefas
+  const [focusedTaskKey,setFocusedTaskKey]=useState<string|null>(null);
+  const [unlockModal,setUnlockModal]=useState<{cnpj:string;empresa:string;tarefa:string;isChecklist:boolean}|null>(null);
+  const [unlockMotivo,setUnlockMotivo]=useState("");
+  const [unlockOldValue,setUnlockOldValue]=useState("");
+  const [unlockOldChecks,setUnlockOldChecks]=useState<Record<string,boolean>>({});
+  const [unlockNewValue,setUnlockNewValue]=useState("");
+  const [unlockNewChecks,setUnlockNewChecks]=useState<Record<string,boolean>>({});
+  const [unlockErr,setUnlockErr]=useState("");
+  const [taskLogOpen,setTaskLogOpen]=useState(false);
+  const [taskLogData,setTaskLogData]=useState<any[]>([]);
   const [parcDeleteSenha,setParcDeleteSenha]=useState("");
   const [parcDeleteErr,setParcDeleteErr]=useState("");
   const [parcClientSearch,setParcClientSearch]=useState("");
@@ -2274,14 +2285,16 @@ export default function App() {
     if(data?.state) setState(normalizeSavedState(data.state));
     if(data?.parcelamentos?.length) setParcelamentos(data.parcelamentos);
     if(data?.deletionLog) setDeletionLog(data.deletionLog||[]);
+    const savedRotinas=data?.appSettings?.emailRotinas;
     setAppSettings({
       dashboardAnnouncement:String(data?.appSettings?.dashboardAnnouncement||""),
       emailGmailUser:String(data?.appSettings?.emailGmailUser||""),
       emailGmailPass:String(data?.appSettings?.emailGmailPass||""),
       emailDestino:String(data?.appSettings?.emailDestino||""),
-      emailDiaEnvio:String(data?.appSettings?.emailDiaEnvio||"1"),
-      emailHorario:String(data?.appSettings?.emailHorario||"08:00"),
       emailAtivo:Boolean(data?.appSettings?.emailAtivo||false),
+      emailRotinas:Array.isArray(savedRotinas)&&savedRotinas.length>=2
+        ?savedRotinas.slice(0,2)
+        :[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}],
     });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
     setSaveStatus(remote?"Atualizado em tempo real.":data?.savedAt?"Dados carregados do banco local.":"Banco local iniciado.");
@@ -2828,6 +2841,56 @@ export default function App() {
       return applyTarefaValue(prev,cnpj,tarefa,nextValue);
     });
   };
+  const taskKey=(cnpj:string,tarefa:string)=>`${cnpj}||${tarefa}||${mesAtual}`;
+  const isTaskLocked=(cnpj:string,tarefa:string,val:any)=>{
+    if(!val) return false;
+    const key=taskKey(cnpj,tarefa);
+    if(focusedTaskKey===key) return false;
+    const filled=typeof val==="object"
+      ?(val.entrada||val.saida)
+      :/^\d{4}-\d{2}-\d{2}$/.test(String(val).trim());
+    return filled;
+  };
+  const confirmUnlock=async()=>{
+    if(!unlockModal) return;
+    if(!unlockMotivo.trim()){setUnlockErr("Informe o motivo.");return;}
+    if(!unlockModal.isChecklist&&!unlockNewValue){setUnlockErr("Informe a nova data.");return;}
+    const empresa=clientesData.find(c=>c.cnpj===unlockModal.cnpj)?.nome||unlockModal.empresa||unlockModal.cnpj;
+    // Aplica o novo valor
+    if(unlockModal.isChecklist){
+      updateTarefa(unlockModal.cnpj,unlockModal.tarefa,unlockNewChecks);
+    } else {
+      updateTarefa(unlockModal.cnpj,unlockModal.tarefa,unlockNewValue);
+    }
+    // Formata info antiga e atual para o log
+    const fmtDate=(s:string)=>{const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s);return m?`${m[3]}/${m[2]}/${m[1]}`:s||"(vazio)";};
+    const fmtVal=(v:any)=>typeof v==="object"?Object.entries(v).filter(([,ok])=>ok).map(([k])=>k).join(", ")||"(nenhum)":fmtDate(String(v||""));
+    const infoAntiga=unlockModal.isChecklist?fmtVal(unlockOldChecks):fmtVal(unlockOldValue);
+    const infoAtual=unlockModal.isChecklist?fmtVal(unlockNewChecks):fmtVal(unlockNewValue);
+    // Registra no log
+    try{
+      await fetch(apiUrl("/api/task-unlock-log"),{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({cnpj:unlockModal.cnpj,empresa,tarefa:unlockModal.tarefa,mes:mesAtual,motivo:unlockMotivo.trim(),usuario:user.name,infoAntiga,infoAtual}),
+      });
+    }catch{}
+    setUnlockModal(null);
+    setUnlockMotivo("");
+    setUnlockOldValue("");
+    setUnlockOldChecks({});
+    setUnlockNewValue("");
+    setUnlockNewChecks({});
+    setUnlockErr("");
+  };
+  const openTaskLog=async()=>{
+    try{
+      const r=await fetch(apiUrl("/api/task-unlock-log"));
+      const d=await r.json();
+      setTaskLogData(d.logs||[]);
+    }catch{setTaskLogData([]);}
+    setTaskLogOpen(true);
+  };
   const markDeclaracaoAnualEnviada=(cliente)=>{
     const tarefas=getClientTarefas(cliente);
     const startIndex=Math.max(0,MESES_HIST.indexOf(mesAtual));
@@ -3139,23 +3202,40 @@ export default function App() {
               const isChecklist=isChecklistTarefa(t);
               const checks=getChecklistStatus(v);
               const concluida=isTarefaConcluida(t,v);
+              const locked=isTaskLocked(c.cnpj,t,v);
               return(
-                <div key={t} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:concluida?"#0d2d1a":"#0f172a",borderRadius:7,border:`1px solid ${concluida?"#166534":"#334155"}`,marginBottom:7,flexWrap:isChecklist?"wrap":"nowrap"}}>
+                <div key={t} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px",background:concluida?"#0d2d1a":"#0f172a",borderRadius:7,border:`1px solid ${locked?"#854d0e":concluida?"#166534":"#334155"}`,marginBottom:7,flexWrap:isChecklist?"wrap":"nowrap",position:"relative"}}>
                   <div style={{minWidth:150,fontSize:13,fontWeight:500}}>{t}</div>
                   {isChecklist?(
-                    <div style={{display:"flex",gap:10,flex:1,flexWrap:"wrap"}}>
+                    <div style={{display:"flex",gap:10,flex:1,flexWrap:"wrap",opacity:locked?0.6:1,pointerEvents:locked?"none":"auto"}}>
                       {CHECKLIST_FIELDS.map(field=>(
-                        <label key={field.key} style={{display:"flex",alignItems:"center",gap:6,color:checks[field.key]?"#bbf7d0":"#cbd5e1",fontSize:12,fontWeight:600,cursor:"pointer",background:checks[field.key]?"#14532d":"#1e293b",border:`1px solid ${checks[field.key]?"#16a34a":"#334155"}`,borderRadius:6,padding:"5px 8px"}}>
-                          <input type="checkbox" checked={checks[field.key]} onChange={e=>updateChecklistTarefa(c.cnpj,t,field.key,e.target.checked)}/>
+                        <label key={field.key} style={{display:"flex",alignItems:"center",gap:6,color:checks[field.key]?"#bbf7d0":"#cbd5e1",fontSize:12,fontWeight:600,cursor:locked?"not-allowed":"pointer",background:checks[field.key]?"#14532d":"#1e293b",border:`1px solid ${checks[field.key]?"#16a34a":"#334155"}`,borderRadius:6,padding:"5px 8px"}}>
+                          <input type="checkbox" checked={checks[field.key]} onChange={e=>updateChecklistTarefa(c.cnpj,t,field.key,e.target.checked)} disabled={locked}/>
                           {field.label}
                         </label>
                       ))}
                     </div>
                   ):(
                     <input type="date" value={getDateInputValue(v)} onChange={e=>updateTarefa(c.cnpj,t,e.target.value)}
-                      style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid #334155",color:"#f1f5f9",fontSize:13,padding:"2px 4px",outline:"none"}}/>
+                      onFocus={()=>setFocusedTaskKey(taskKey(c.cnpj,t))}
+                      onBlur={()=>setFocusedTaskKey(null)}
+                      disabled={locked}
+                      style={{flex:1,background:"transparent",border:"none",borderBottom:`1px solid ${locked?"#854d0e":"#334155"}`,color:locked?"#92400e":"#f1f5f9",fontSize:13,padding:"2px 4px",outline:"none",cursor:locked?"not-allowed":"text"}}/>
                   )}
-                  {concluida&&<span style={{color:"#10b981",fontSize:11,fontWeight:800}}>OK</span>}
+                  {concluida&&!locked&&<span style={{color:"#10b981",fontSize:11,fontWeight:800}}>OK</span>}
+                  {locked&&(
+                    <button
+                      title="Tarefa bloqueada — clique para desbloquear"
+                      onClick={()=>{setUnlockModal({cnpj:c.cnpj,empresa:c.nome,tarefa:t,isChecklist});setUnlockOldValue(getDateInputValue(v));setUnlockOldChecks({...checks});setUnlockNewValue(getDateInputValue(v));setUnlockNewChecks({...checks});setUnlockMotivo("");setUnlockErr("");}}
+                      style={{background:"#78350f",border:"1px solid #d97706",color:"#fde68a",borderRadius:6,padding:"3px 9px",fontSize:11,fontWeight:800,cursor:"pointer",whiteSpace:"nowrap",flexShrink:0}}>
+                      🔒 Desbloquear
+                    </button>
+                  )}
+                  {!locked&&concluida&&(
+                    <span style={{background:"#14532d",border:"1px solid #16a34a",color:"#86efac",borderRadius:6,padding:"3px 7px",fontSize:10,fontWeight:700,flexShrink:0}}>
+                      🔓 Desbloqueada
+                    </span>
+                  )}
                 </div>
               );
             })}
@@ -3225,6 +3305,45 @@ export default function App() {
             </div>
           </div>
         </div>
+      {unlockModal&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>{setUnlockModal(null);setUnlockMotivo("");setUnlockOldValue("");setUnlockOldChecks({});setUnlockNewValue("");setUnlockNewChecks({});setUnlockErr("");}}>
+          <div style={{background:"#1a0a00",border:"1px solid #d97706",borderRadius:14,padding:28,width:"100%",maxWidth:440,boxShadow:"0 32px 80px #00000099"}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontSize:20,marginBottom:6}}>🔒</div>
+            <div style={{fontWeight:800,fontSize:15,color:"#fde68a",marginBottom:4}}>Desbloquear tarefa</div>
+            <div style={{fontSize:12,color:"#94a3b8",marginBottom:16}}>
+              <span style={{color:"#fbbf24",fontWeight:700}}>{unlockModal.tarefa}</span> — {unlockModal.empresa}<br/>
+              <span style={{color:"#64748b",fontSize:11}}>Competência: {mesAtual}</span>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:11,color:"#d97706",fontWeight:700,display:"block",marginBottom:6}}>Nova informação *</label>
+              {unlockModal?.isChecklist?(
+                <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                  {CHECKLIST_FIELDS.map(field=>(
+                    <label key={field.key} style={{display:"flex",alignItems:"center",gap:6,color:unlockNewChecks[field.key]?"#bbf7d0":"#cbd5e1",fontSize:12,fontWeight:600,cursor:"pointer",background:unlockNewChecks[field.key]?"#14532d":"#1e293b",border:`1px solid ${unlockNewChecks[field.key]?"#16a34a":"#334155"}`,borderRadius:6,padding:"5px 8px"}}>
+                      <input type="checkbox" checked={!!unlockNewChecks[field.key]} onChange={e=>setUnlockNewChecks(prev=>({...prev,[field.key]:e.target.checked}))}/>
+                      {field.label}
+                    </label>
+                  ))}
+                </div>
+              ):(
+                <input type="date" autoFocus value={unlockNewValue} onChange={e=>{setUnlockNewValue(e.target.value);setUnlockErr("");}} style={{...S.input,borderColor:"#d97706"}}/>
+              )}
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{fontSize:11,color:"#d97706",fontWeight:700,display:"block",marginBottom:6}}>Motivo da alteração *</label>
+              <textarea rows={3} value={unlockMotivo} onChange={e=>{setUnlockMotivo(e.target.value);setUnlockErr("");}} placeholder="Descreva o motivo da alteração..." style={{...S.input,resize:"vertical" as const,lineHeight:1.45,borderColor:"#d97706"}}/>
+              {unlockErr&&<div style={{fontSize:11,color:"#f87171",marginTop:4}}>{unlockErr}</div>}
+            </div>
+            <div style={{fontSize:10,color:"#78350f",background:"#1c0a00",border:"1px solid #78350f",borderRadius:6,padding:"7px 10px",marginBottom:16}}>
+              ⚠️ Esta ação ficará registrada no log com seu nome, data e horário.
+            </div>
+            <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
+              <button onClick={()=>{setUnlockModal(null);setUnlockMotivo("");setUnlockOldValue("");setUnlockOldChecks({});setUnlockNewValue("");setUnlockNewChecks({});setUnlockErr("");}} style={{background:"#334155",border:"none",color:"#94a3b8",borderRadius:8,padding:"9px 18px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Cancelar</button>
+              <button onClick={confirmUnlock} style={{background:"#d97706",border:"none",color:"#fff",borderRadius:8,padding:"9px 20px",fontSize:13,fontWeight:700,cursor:"pointer"}}>Salvar alteração</button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     );
   }
@@ -4076,6 +4195,7 @@ export default function App() {
               </div>
               {configMsg&&<div style={{background:"#0f2f1d",border:"1px solid #166534",color:"#86efac",borderRadius:8,padding:"8px 12px",fontSize:12}}>{configMsg}</div>}
               <button onClick={openDeletionLog} style={{padding:"7px 14px",borderRadius:8,background:"#2d1b4e",border:"1px solid #7c3aed",color:"#c4b5fd",fontWeight:700,fontSize:12,cursor:"pointer"}}>Log de Exclusões</button>
+              <button onClick={openTaskLog} style={{padding:"7px 14px",borderRadius:8,background:"#1c0a00",border:"1px solid #d97706",color:"#fde68a",fontWeight:700,fontSize:12,cursor:"pointer"}}>Log de Tarefas</button>
             </div>
 
             <div style={{...S.card,marginBottom:14}}>
@@ -4110,20 +4230,42 @@ export default function App() {
                   <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Senha de app Gmail</label>
                   <input type="password" value={appSettings.emailGmailPass} onChange={e=>setAppSettings(p=>({...p,emailGmailPass:e.target.value}))} placeholder="Senha de app (não a senha normal)" style={S.input}/>
                 </div>
-                <div>
+                <div style={{gridColumn:"1/-1"}}>
                   <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>E-mail destinatário</label>
                   <input value={appSettings.emailDestino} onChange={e=>setAppSettings(p=>({...p,emailDestino:e.target.value}))} placeholder="destino@email.com" style={S.input}/>
                 </div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  <div>
-                    <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Dia do mês</label>
-                    <input type="number" min="1" max="31" value={appSettings.emailDiaEnvio} onChange={e=>setAppSettings(p=>({...p,emailDiaEnvio:e.target.value}))} style={S.input}/>
-                  </div>
-                  <div>
-                    <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Horário</label>
-                    <input type="time" value={appSettings.emailHorario} onChange={e=>setAppSettings(p=>({...p,emailHorario:e.target.value}))} style={S.input}/>
-                  </div>
-                </div>
+              </div>
+              {/* Rotinas */}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                {[0,1].map(idx=>{
+                  const r=appSettings.emailRotinas?.[idx]||{diaEnvio:"1",horario:"08:00",ativo:false};
+                  const upd=(field,val)=>setAppSettings(p=>{
+                    const rot=[...(p.emailRotinas||[{},{} ])];
+                    rot[idx]={...rot[idx],[field]:val};
+                    return{...p,emailRotinas:rot};
+                  });
+                  return(
+                    <div key={idx} style={{background:"#061729",border:`1px solid ${r.ativo?"#16a34a":"#1e3a5f"}`,borderRadius:8,padding:"12px 14px"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                        <span style={{fontWeight:700,fontSize:12,color:"#7dd8f0"}}>Rotina {idx+1}</span>
+                        <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:11,color:r.ativo?"#86efac":"#64748b",fontWeight:700}}>
+                          <input type="checkbox" checked={!!r.ativo} onChange={e=>upd("ativo",e.target.checked)} style={{accentColor:"#16a34a"}}/>
+                          {r.ativo?"Ativa":"Inativa"}
+                        </label>
+                      </div>
+                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                        <div>
+                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:3}}>Dia do mês</label>
+                          <input type="number" min="1" max="31" value={r.diaEnvio} onChange={e=>upd("diaEnvio",e.target.value)} style={{...S.input,fontSize:12}}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:3}}>Horário</label>
+                          <input type="time" value={r.horario} onChange={e=>upd("horario",e.target.value)} style={{...S.input,fontSize:12}}/>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <div style={{fontSize:10,color:"#475569",marginBottom:12,padding:"8px 12px",background:"#0f172a",borderRadius:6,border:"1px solid #1e3a5f"}}>
                 ℹ️ Use uma <strong style={{color:"#7dd8f0"}}>Senha de App</strong> do Gmail (não a senha da conta). Gere em: <span style={{color:"#7dd8f0"}}>Conta Google → Segurança → Senhas de app</span>. O servidor precisa estar rodando no horário configurado.
@@ -5157,6 +5299,8 @@ ${sectionsHtml||`<p style="color:#94a3b8;text-align:center;padding:24pt;font-siz
               {/* ══════════════════════════════════════════════
                   DELETE CONFIRMATION MODAL
               ══════════════════════════════════════════════ */}
+
+
               {parcDeleteId&&(()=>{
                 const target=parcelamentos.find(p=>p.id===parcDeleteId);
                 return(
@@ -5463,6 +5607,44 @@ ${sectionsHtml||`<p style="color:#94a3b8;text-align:center;padding:24pt;font-siz
                 <button onClick={saveCliente} style={{padding:"10px 24px",borderRadius:8,background:"#10b981",border:"none",color:"#052e1b",fontWeight:800,cursor:"pointer"}}>Salvar empresa</button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL LOG DE TAREFAS */}
+      {taskLogOpen&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:3000,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setTaskLogOpen(false)}>
+          <div style={{background:"#0f1f35",border:"1px solid #245a7c",borderRadius:14,padding:28,width:"100%",maxWidth:900,maxHeight:"88vh",overflowY:"auto",boxShadow:"0 32px 80px #00000099"}} onClick={e=>e.stopPropagation()}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+              <div style={{fontWeight:800,fontSize:15,color:"#f1f5f9"}}>Log de Desbloqueio de Tarefas</div>
+              <button onClick={()=>setTaskLogOpen(false)} style={{background:"#334155",border:"none",color:"#94a3b8",borderRadius:6,padding:"5px 10px",fontSize:12,cursor:"pointer"}}>Fechar</button>
+            </div>
+            {taskLogData.length===0?(
+              <div style={{color:"#64748b",textAlign:"center",padding:32}}>Nenhum registro encontrado.</div>
+            ):(
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{background:"#0f172a",color:"#64748b"}}>
+                    {["Data/Hora","Usuário","Cliente","Tarefa","Competência","Info Antiga","Info Atual","Motivo"].map(h=>(
+                      <th key={h} style={{padding:"8px 10px",textAlign:"left",borderBottom:"1px solid #1e293b",fontWeight:700,fontSize:10,whiteSpace:"nowrap"}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {taskLogData.map((row,i)=>(
+                    <tr key={row.id} style={{borderBottom:"1px solid #1e293b",background:i%2===0?"transparent":"#0a1525"}}>
+                      <td style={{padding:"7px 10px",color:"#94a3b8",whiteSpace:"nowrap",fontSize:11}}>{row.timestamp}</td>
+                      <td style={{padding:"7px 10px",color:"#7dd8f0",fontWeight:700}}>{row.usuario}</td>
+                      <td style={{padding:"7px 10px",color:"#e2e8f0"}}>{row.empresa}</td>
+                      <td style={{padding:"7px 10px",color:"#fbbf24",fontWeight:700}}>{row.tarefa}</td>
+                      <td style={{padding:"7px 10px",color:"#64748b"}}>{row.mes}</td>
+                      <td style={{padding:"7px 10px",color:"#fca5a5"}}>{row.info_antiga||"—"}</td>
+                      <td style={{padding:"7px 10px",color:"#86efac",fontWeight:600}}>{row.info_atual||"—"}</td>
+                      <td style={{padding:"7px 10px",color:"#e2e8f0"}}>{row.motivo}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
