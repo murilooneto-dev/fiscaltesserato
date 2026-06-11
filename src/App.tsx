@@ -2199,7 +2199,7 @@ export default function App() {
   const [deletionLogOpen,setDeletionLogOpen]=useState(false);
   const [deletionLogItems,setDeletionLogItems]=useState<any[]>([]);
   const [deletionLogLoading,setDeletionLogLoading]=useState(false);
-  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailAtivo:false,emailRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}]});
+  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailAtivo:false,emailRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}],logRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false}]});
   const [configMsg,setConfigMsg]=useState("");
   const [dteFile,setDteFile]=useState(null);
   const [sistemaFile,setSistemaFile]=useState(null);
@@ -2286,6 +2286,7 @@ export default function App() {
     if(data?.parcelamentos?.length) setParcelamentos(data.parcelamentos);
     if(data?.deletionLog) setDeletionLog(data.deletionLog||[]);
     const savedRotinas=data?.appSettings?.emailRotinas;
+    const savedLogRotina=data?.appSettings?.logRotina;
     setAppSettings({
       dashboardAnnouncement:String(data?.appSettings?.dashboardAnnouncement||""),
       emailGmailUser:String(data?.appSettings?.emailGmailUser||""),
@@ -2295,6 +2296,15 @@ export default function App() {
       emailRotinas:Array.isArray(savedRotinas)&&savedRotinas.length>=2
         ?savedRotinas.slice(0,2)
         :[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}],
+      logRotinas:(()=>{
+        const saved=data?.appSettings?.logRotinas;
+        if(Array.isArray(saved)&&saved.length>=4) return saved.slice(0,4);
+        // migração: se tinha logRotina singular, converte
+        const old=data?.appSettings?.logRotina;
+        const base=old&&old.diaEnvio?[old]:[{diaEnvio:"1",horario:"08:00",ativo:false}];
+        while(base.length<4) base.push({diaEnvio:"1",horario:"08:00",ativo:false});
+        return base;
+      })(),
     });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
     setSaveStatus(remote?"Atualizado em tempo real.":data?.savedAt?"Dados carregados do banco local.":"Banco local iniciado.");
@@ -4267,10 +4277,45 @@ export default function App() {
                   );
                 })}
               </div>
+              {/* Rotinas do Log de Tarefas */}
+              <div style={{marginBottom:12}}>
+                <div style={{fontWeight:700,fontSize:12,color:"#fde68a",marginBottom:8}}>Rotinas — Log de Alterações de Tarefas</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                  {[0,1,2,3].map(idx=>{
+                    const lr=(appSettings.logRotinas||[])[idx]||{diaEnvio:"1",horario:"08:00",ativo:false};
+                    const updLog=(field,val)=>setAppSettings(p=>{
+                      const rot=[...(p.logRotinas||[{},{},{},{}])];
+                      rot[idx]={...rot[idx],[field]:val};
+                      return{...p,logRotinas:rot};
+                    });
+                    return(
+                      <div key={idx} style={{background:"#1a1000",border:`1px solid ${lr.ativo?"#d97706":"#3d2000"}`,borderRadius:8,padding:"10px 12px"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+                          <span style={{fontSize:10,color:"#d97706",fontWeight:800}}>ENVIO {idx+1}</span>
+                          <label style={{display:"flex",alignItems:"center",gap:5,cursor:"pointer",fontSize:11,fontWeight:700,color:lr.ativo?"#fde68a":"#64748b"}}>
+                            <input type="checkbox" checked={!!lr.ativo} onChange={e=>updLog("ativo",e.target.checked)} style={{accentColor:"#d97706"}}/>
+                            {lr.ativo?"Ativo":"Inativo"}
+                          </label>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                          <div>
+                            <label style={{fontSize:10,color:"#94a3b8",fontWeight:700,display:"block",marginBottom:3}}>Dia do mês</label>
+                            <input type="number" min="1" max="31" value={lr.diaEnvio} onChange={e=>updLog("diaEnvio",e.target.value)} style={{...S.input,fontSize:12}}/>
+                          </div>
+                          <div>
+                            <label style={{fontSize:10,color:"#94a3b8",fontWeight:700,display:"block",marginBottom:3}}>Horário</label>
+                            <input type="time" value={lr.horario} onChange={e=>updLog("horario",e.target.value)} style={{...S.input,fontSize:12}}/>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
               <div style={{fontSize:10,color:"#475569",marginBottom:12,padding:"8px 12px",background:"#0f172a",borderRadius:6,border:"1px solid #1e3a5f"}}>
                 ℹ️ Use uma <strong style={{color:"#7dd8f0"}}>Senha de App</strong> do Gmail (não a senha da conta). Gere em: <span style={{color:"#7dd8f0"}}>Conta Google → Segurança → Senhas de app</span>. O servidor precisa estar rodando no horário configurado.
               </div>
-              <div style={{display:"flex",gap:10}}>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap" as const}}>
                 <button
                   onClick={async()=>{
                     await persistData({manual:true});
@@ -4290,7 +4335,19 @@ export default function App() {
                     }catch{setSaveStatus("Erro ao conectar com o servidor.");}
                   }}
                   style={{background:"#334155",border:"none",color:"#e2e8f0",padding:"9px 20px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
-                  Enviar agora (teste)
+                  Enviar relatórios agora (teste)
+                </button>
+                <button
+                  onClick={async()=>{
+                    setSaveStatus("Enviando log de tarefas...");
+                    try{
+                      const r=await fetch(apiUrl("/api/email-log/send-now"),{method:"POST"});
+                      const d=await r.json();
+                      setSaveStatus(d.ok?`✓ ${d.msg}`:`Erro: ${d.error}`);
+                    }catch{setSaveStatus("Erro ao conectar com o servidor.");}
+                  }}
+                  style={{background:"#1c0a00",border:"1px solid #d97706",color:"#fde68a",padding:"9px 20px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer"}}>
+                  Enviar log agora (teste)
                 </button>
               </div>
             </div>

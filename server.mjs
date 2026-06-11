@@ -55,7 +55,7 @@ function isConcluida(val) {
 
 function buildRelatorioHtml(clientesData, state, mesAtual, responsavel) {
   const esc = (s) => String(s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-  const list = clientesData.filter(c => (c.responsavel || "").toUpperCase() === responsavel.toUpperCase());
+  const list = clientesData.filter(c => (c.responsavel || "").trim().toUpperCase() === (responsavel || "").trim().toUpperCase());
   const mapped = list.map(c => {
     const ts = getTarefas(c.grupo || "simples");
     const cl = (state[c.cnpj] || {})[mesAtual] || {};
@@ -257,25 +257,67 @@ async function sendEmailReports() {
   return { ok: true, msg: `${attachments.length} relatório(s) enviado(s) em 1 e-mail com sucesso.` };
 }
 
-// Cron: verifica a cada minuto se é hora de enviar (checa as 2 rotinas)
+async function sendLogEmail() {
+  const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+  if (!row) return { ok: false, error: "Sem dados no banco." };
+  const cfg = (JSON.parse(row.payload).appSettings) || {};
+  if (!cfg.emailGmailUser || !cfg.emailGmailPass || !cfg.emailDestino)
+    return { ok: false, error: "Configuração de e-mail incompleta." };
+  const logHtml = buildLogHtml();
+  if (!logHtml) return { ok: false, error: "Nenhum registro no log." };
+  const mesAtual = getMesAtual();
+  const transporter = nodemailer.createTransport({ service: "gmail", auth: { user: cfg.emailGmailUser, pass: cfg.emailGmailPass } });
+  try {
+    await transporter.sendMail({
+      from: `"Tesserato Contabilidade" <${cfg.emailGmailUser}>`,
+      to: cfg.emailDestino,
+      subject: `Log de Alterações de Tarefas — ${mesAtual}`,
+      text: "SEGUE EM ANEXO LOG DE ALTERAÇÕES DE TAREFAS",
+      attachments: [{ filename: `Log_Alteracoes_Tarefas_${mesAtual.replace("/","-")}.html`, content: logHtml, contentType: "text/html" }],
+    });
+    return { ok: true, msg: "Log enviado com sucesso." };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+const logLastSentDates = ["","","",""];
+
+// Cron: verifica a cada minuto se é hora de enviar (checa as 2 rotinas + 4 logRotinas)
 setInterval(() => {
   const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
   if (!row) return;
   const cfg = (JSON.parse(row.payload).appSettings) || {};
-  if (!cfg.emailAtivo) return;
 
   const { day, hour, minute, dateStr } = getBrNow();
-  const rotinas = cfg.emailRotinas || [];
 
-  rotinas.forEach((rotina, idx) => {
-    if (!rotina || !rotina.ativo) return;
-    const [hCfg, mCfg] = (rotina.horario || "08:00").split(":").map(Number);
-    const diaCfg = Number(rotina.diaEnvio || 1);
-    const sentKey = `${dateStr}-${idx}`;
-    if (day === diaCfg && hour === hCfg && minute === mCfg && emailLastSentDate[idx] !== sentKey) {
-      emailLastSentDate[idx] = sentKey;
-      console.log(`[EMAIL] Rotina ${idx + 1} disparando — ${dateStr} ${rotina.horario}`);
-      sendEmailReports().then(r => console.log(`[EMAIL] Rotina ${idx + 1}:`, r.ok ? r.msg : r.error));
+  // Rotinas de relatório
+  if (cfg.emailAtivo) {
+    const rotinas = cfg.emailRotinas || [];
+    rotinas.forEach((rotina, idx) => {
+      if (!rotina || !rotina.ativo) return;
+      const [hCfg, mCfg] = (rotina.horario || "08:00").split(":").map(Number);
+      const diaCfg = Number(rotina.diaEnvio || 1);
+      const sentKey = `${dateStr}-${idx}`;
+      if (day === diaCfg && hour === hCfg && minute === mCfg && emailLastSentDate[idx] !== sentKey) {
+        emailLastSentDate[idx] = sentKey;
+        console.log(`[EMAIL] Rotina ${idx + 1} disparando — ${dateStr} ${rotina.horario}`);
+        sendEmailReports().then(r => console.log(`[EMAIL] Rotina ${idx + 1}:`, r.ok ? r.msg : r.error));
+      }
+    });
+  }
+
+  // Rotinas do log de tarefas (até 4)
+  const logRotinas = cfg.logRotinas || (cfg.logRotina ? [cfg.logRotina] : []);
+  logRotinas.forEach((logRot, idx) => {
+    if (!logRot || !logRot.ativo) return;
+    const [hLog, mLog] = (logRot.horario || "08:00").split(":").map(Number);
+    const diaLog = Number(logRot.diaEnvio || 1);
+    const sentKey = `log-${dateStr}-${idx}`;
+    if (day === diaLog && hour === hLog && minute === mLog && logLastSentDates[idx] !== sentKey) {
+      logLastSentDates[idx] = sentKey;
+      console.log(`[EMAIL-LOG] Rotina ${idx+1} disparando — ${dateStr} ${logRot.horario}`);
+      sendLogEmail().then(r => console.log(`[EMAIL-LOG] Rotina ${idx+1}:`, r.ok ? r.msg : r.error));
     }
   });
 }, 60_000);
@@ -768,6 +810,11 @@ async function handleApi(req, res) {
 
   if (requestUrl.pathname === "/api/email-report/send-now" && req.method === "POST") {
     const result = await sendEmailReports();
+    return sendJson(res, result.ok ? 200 : 500, result);
+  }
+
+  if (requestUrl.pathname === "/api/email-log/send-now" && req.method === "POST") {
+    const result = await sendLogEmail();
     return sendJson(res, result.ok ? 200 : 500, result);
   }
 
