@@ -2199,7 +2199,7 @@ export default function App() {
   const [deletionLogOpen,setDeletionLogOpen]=useState(false);
   const [deletionLogItems,setDeletionLogItems]=useState<any[]>([]);
   const [deletionLogLoading,setDeletionLogLoading]=useState(false);
-  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:""});
+  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailDiaEnvio:"1",emailHorario:"08:00",emailAtivo:false});
   const [configMsg,setConfigMsg]=useState("");
   const [dteFile,setDteFile]=useState(null);
   const [sistemaFile,setSistemaFile]=useState(null);
@@ -2274,7 +2274,15 @@ export default function App() {
     if(data?.state) setState(normalizeSavedState(data.state));
     if(data?.parcelamentos?.length) setParcelamentos(data.parcelamentos);
     if(data?.deletionLog) setDeletionLog(data.deletionLog||[]);
-    setAppSettings({dashboardAnnouncement:String(data?.appSettings?.dashboardAnnouncement||"")});
+    setAppSettings({
+      dashboardAnnouncement:String(data?.appSettings?.dashboardAnnouncement||""),
+      emailGmailUser:String(data?.appSettings?.emailGmailUser||""),
+      emailGmailPass:String(data?.appSettings?.emailGmailPass||""),
+      emailDestino:String(data?.appSettings?.emailDestino||""),
+      emailDiaEnvio:String(data?.appSettings?.emailDiaEnvio||"1"),
+      emailHorario:String(data?.appSettings?.emailHorario||"08:00"),
+      emailAtivo:Boolean(data?.appSettings?.emailAtivo||false),
+    });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
     setSaveStatus(remote?"Atualizado em tempo real.":data?.savedAt?"Dados carregados do banco local.":"Banco local iniciado.");
   };
@@ -4079,6 +4087,70 @@ export default function App() {
                 style={{...S.input,minHeight:92,resize:"vertical",lineHeight:1.45}}
               />
               <div style={{...S.subtle,marginTop:8}}>Somente administradores podem criar ou editar. Aparece para todos no dashboard em tempo real quando preenchido.</div>
+            </div>
+
+            {/* Rotinas de E-mail */}
+            <div style={{...S.card,marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:12,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:13,marginBottom:2}}>Rotinas de E-mail — Relatórios Automáticos</div>
+                  <div style={{color:"#64748b",fontSize:11}}>Envia automaticamente 1 relatório por operador no dia e horário configurados.</div>
+                </div>
+                <label style={{display:"flex",alignItems:"center",gap:8,background:appSettings.emailAtivo?"#0f2f1d":"#1e293b",border:`1px solid ${appSettings.emailAtivo?"#16a34a":"#334155"}`,borderRadius:8,padding:"8px 14px",cursor:"pointer",fontWeight:700,fontSize:12,color:appSettings.emailAtivo?"#86efac":"#94a3b8"}}>
+                  <input type="checkbox" checked={!!appSettings.emailAtivo} onChange={e=>setAppSettings(p=>({...p,emailAtivo:e.target.checked}))} style={{accentColor:"#16a34a"}}/>
+                  {appSettings.emailAtivo?"Ativo — enviando relatórios":"Inativo"}
+                </label>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <div>
+                  <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Gmail remetente</label>
+                  <input value={appSettings.emailGmailUser} onChange={e=>setAppSettings(p=>({...p,emailGmailUser:e.target.value}))} placeholder="seuemail@gmail.com" style={S.input}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Senha de app Gmail</label>
+                  <input type="password" value={appSettings.emailGmailPass} onChange={e=>setAppSettings(p=>({...p,emailGmailPass:e.target.value}))} placeholder="Senha de app (não a senha normal)" style={S.input}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>E-mail destinatário</label>
+                  <input value={appSettings.emailDestino} onChange={e=>setAppSettings(p=>({...p,emailDestino:e.target.value}))} placeholder="destino@email.com" style={S.input}/>
+                </div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                  <div>
+                    <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Dia do mês</label>
+                    <input type="number" min="1" max="31" value={appSettings.emailDiaEnvio} onChange={e=>setAppSettings(p=>({...p,emailDiaEnvio:e.target.value}))} style={S.input}/>
+                  </div>
+                  <div>
+                    <label style={{fontSize:11,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>Horário</label>
+                    <input type="time" value={appSettings.emailHorario} onChange={e=>setAppSettings(p=>({...p,emailHorario:e.target.value}))} style={S.input}/>
+                  </div>
+                </div>
+              </div>
+              <div style={{fontSize:10,color:"#475569",marginBottom:12,padding:"8px 12px",background:"#0f172a",borderRadius:6,border:"1px solid #1e3a5f"}}>
+                ℹ️ Use uma <strong style={{color:"#7dd8f0"}}>Senha de App</strong> do Gmail (não a senha da conta). Gere em: <span style={{color:"#7dd8f0"}}>Conta Google → Segurança → Senhas de app</span>. O servidor precisa estar rodando no horário configurado.
+              </div>
+              <div style={{display:"flex",gap:10}}>
+                <button
+                  onClick={async()=>{
+                    await persistData({manual:true});
+                    setSaveStatus("Configuração salva.");
+                  }}
+                  style={{...btnAcao("linear-gradient(135deg,#0077b6,#00b4d8)"),padding:"9px 20px",fontSize:12,fontWeight:700}}>
+                  Salvar configuração
+                </button>
+                <button
+                  onClick={async()=>{
+                    setSaveStatus("Enviando relatórios de teste...");
+                    await persistData();
+                    try{
+                      const r=await fetch(apiUrl("/api/email-report/send-now"),{method:"POST"});
+                      const d=await r.json();
+                      setSaveStatus(d.ok?`✓ ${d.msg}`:`Erro: ${d.error}`);
+                    }catch{setSaveStatus("Erro ao conectar com o servidor.");}
+                  }}
+                  style={{...btnAcao("#334155","#e2e8f0"),padding:"9px 20px",fontSize:12,fontWeight:700}}>
+                  Enviar agora (teste)
+                </button>
+              </div>
             </div>
 
             {/* Gerenciamento de usuários */}
