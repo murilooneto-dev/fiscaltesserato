@@ -1,5 +1,4 @@
 @echo off
-title Fiscal Agente
 cd /d "%~dp0"
 
 if not exist agent.env (
@@ -9,6 +8,5 @@ if not exist agent.env (
     exit /b 1
 )
 
-echo Iniciando Fiscal Agente...
-python agent.py
-pause
+rem Usa pythonw para rodar sem janela de console (ícone fica na bandeja)
+start "" pythonw agent_tray.py
