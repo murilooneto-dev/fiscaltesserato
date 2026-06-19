@@ -15,8 +15,50 @@ const dataDir = path.join(__dirname, "data");
 const dbPath = path.join(dataDir, "fiscal-system.sqlite");
 const distDir = path.join(__dirname, "dist");
 const eventClients = new Set();
-let botIssProcess = null;
-const BOT_ISS_DIR = process.env.BOT_ISS_DIR || "C:\\Users\\Client\\Documents\\Bot Novo\\bot_iss";
+let botIssProcess  = null;
+let botSigaProcess = null;
+let botMeiProcess  = null;
+const BOT_ISS_DIR   = process.env.BOT_ISS_DIR  || "C:\\Users\\Client\\Documents\\Bot Novo\\bot_iss";
+const RUNNERS_DIR   = path.join(__dirname, "runners");
+
+function getRobotsConfig() {
+  try {
+    const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+    if (!row) return {};
+    return (JSON.parse(row.payload).appSettings?.robotsConfig) || {};
+  } catch { return {}; }
+}
+
+async function sendBotEmail(rc, botLabel) {
+  if (!rc?.emailAtivo || !rc.emailRemetente || !rc.emailDestinatario || !rc.emailSenha) return;
+  try {
+    const nodemailer = await import("nodemailer");
+    const transporter = nodemailer.default.createTransport({
+      service: "gmail", auth: { user: rc.emailRemetente, pass: rc.emailSenha },
+    });
+    const attachments = [];
+    if (rc.pastaDownloads) {
+      const { readdir, stat } = await import("fs/promises");
+      try {
+        const files = await readdir(rc.pastaDownloads);
+        for (const f of files) {
+          const fp = path.join(rc.pastaDownloads, f);
+          const s = await stat(fp);
+          if (s.isFile()) attachments.push({ filename: f, path: fp });
+        }
+      } catch {}
+    }
+    await transporter.sendMail({
+      from: rc.emailRemetente,
+      to: rc.emailDestinatario,
+      subject: `[Fiscal Tesserato] ${botLabel} — execução concluída`,
+      text: `O robô ${botLabel} finalizou a execução com sucesso.\n\nSegue em anexo os arquivos gerados.`,
+      attachments,
+    });
+  } catch (e) {
+    console.error(`[${botLabel}] Erro ao enviar email:`, e.message);
+  }
+}
 
 await mkdir(dataDir, { recursive: true });
 
@@ -677,23 +719,27 @@ async function handleApi(req, res) {
       return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
     }
 
-    let cnpjs = [];
+    let empresas = [];
     try {
       const body = await readBody(req);
-      if (body) cnpjs = JSON.parse(body).cnpjs || [];
+      if (body) empresas = JSON.parse(body).empresas || [];
     } catch {}
 
-    // PYTHON_CMD pode ser "python", "py -3.11", "python3", etc.
+    const issRc = getRobotsConfig().iss || {};
     const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
     const pythonParts = pythonRaw.split(/\s+/);
     const pythonCmd = pythonParts[0];
-    const pythonArgs = [...pythonParts.slice(1), "bot_iss.py"];
+    const runnerPath = path.join(RUNNERS_DIR, "runner_iss.py");
+    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
     const proc = spawn(pythonCmd, pythonArgs, {
       cwd: BOT_ISS_DIR,
       env: {
         ...process.env,
         PYTHONIOENCODING: "utf-8",
-        ...(cnpjs.length > 0 ? { BOT_ISS_CNPJS: cnpjs.join(",") } : {}),
+        ...(issRc.pastaDownloads   ? { BOT_ISS_DOWNLOADS:       issRc.pastaDownloads }   : {}),
+        ...(issRc.emailRemetente   ? { BOT_ISS_SMTP_USER:       issRc.emailRemetente }   : {}),
+        ...(issRc.emailSenha       ? { BOT_ISS_SMTP_PASS:       issRc.emailSenha }       : {}),
+        ...(issRc.emailDestinatario? { BOT_ISS_EMAIL_DESTINO:   issRc.emailDestinatario }: {}),
       },
     });
 
@@ -714,6 +760,7 @@ async function handleApi(req, res) {
       botIssProcess = null;
       if (code === 0) {
         broadcastEvent({ type: "bot-iss-done", code });
+        sendBotEmail(getRobotsConfig().iss, "T-ISS");
       } else {
         broadcastEvent({ type: "bot-iss-error", code, error: `Processo encerrado com código ${code}` });
       }
@@ -725,6 +772,130 @@ async function handleApi(req, res) {
     });
 
     return sendJson(res, 200, { ok: true, started: true });
+  }
+
+  // ── T-SIGA ──────────────────────────────────────────────────────────────────
+  if (req.url === "/api/bot-siga/status" && req.method === "GET") {
+    return sendJson(res, 200, { ok: true, running: botSigaProcess !== null });
+  }
+
+  if (req.url === "/api/bot-siga/run" && req.method === "POST") {
+    if (botSigaProcess !== null) {
+      return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
+    }
+    let empresas = [];
+    try {
+      const body = await readBody(req);
+      const parsed = JSON.parse(body);
+      empresas = parsed.empresas || [];
+    } catch {}
+
+    const sigaRc = getRobotsConfig().siga || {};
+    const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
+    const pythonParts = pythonRaw.split(/\s+/);
+    const pythonCmd = pythonParts[0];
+    const runnerPath = path.join(RUNNERS_DIR, "runner_siga.py");
+    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
+    const proc = spawn(pythonCmd, pythonArgs, {
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: "utf-8",
+        ...(sigaRc.pastaDownloads ? { SIGA_DOWNLOADS: sigaRc.pastaDownloads } : {}),
+      },
+    });
+
+    botSigaProcess = proc;
+    broadcastEvent({ type: "bot-siga-started" });
+
+    const onData = (stream) => (chunk) => {
+      const lines = chunk.toString("utf-8").split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim()) broadcastEvent({ type: "bot-siga-log", line, stream });
+      }
+    };
+    proc.stdout.on("data", onData("stdout"));
+    proc.stderr.on("data", onData("stderr"));
+    proc.on("close", (code) => {
+      botSigaProcess = null;
+      if (code === 0) {
+        broadcastEvent({ type: "bot-siga-done", code });
+        sendBotEmail(getRobotsConfig().siga, "T-SIGA");
+      } else {
+        broadcastEvent({ type: "bot-siga-error", code, error: `Processo encerrado com código ${code}` });
+      }
+    });
+    proc.on("error", (err) => {
+      botSigaProcess = null;
+      broadcastEvent({ type: "bot-siga-error", code: -1, error: err.message });
+    });
+    return sendJson(res, 200, { ok: true, started: true });
+  }
+
+  if (req.url === "/api/bot-siga/stop" && req.method === "POST") {
+    if (botSigaProcess) { botSigaProcess.kill(); botSigaProcess = null; }
+    return sendJson(res, 200, { ok: true });
+  }
+
+  // ── T-MEI ───────────────────────────────────────────────────────────────────
+  if (req.url === "/api/bot-mei/status" && req.method === "GET") {
+    return sendJson(res, 200, { ok: true, running: botMeiProcess !== null });
+  }
+
+  if (req.url === "/api/bot-mei/run" && req.method === "POST") {
+    if (botMeiProcess !== null) {
+      return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
+    }
+    let empresas = [];
+    try {
+      const body = await readBody(req);
+      const parsed = JSON.parse(body);
+      empresas = parsed.empresas || [];
+    } catch {}
+
+    const meiRc = getRobotsConfig().mei || {};
+    const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
+    const pythonParts = pythonRaw.split(/\s+/);
+    const pythonCmd = pythonParts[0];
+    const runnerPath = path.join(RUNNERS_DIR, "runner_mei.py");
+    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
+    const proc = spawn(pythonCmd, pythonArgs, {
+      env: {
+        ...process.env,
+        PYTHONIOENCODING: "utf-8",
+        ...(meiRc.pastaDownloads ? { MEI_DOWNLOADS: meiRc.pastaDownloads } : {}),
+      },
+    });
+
+    botMeiProcess = proc;
+    broadcastEvent({ type: "bot-mei-started" });
+
+    const onData = (stream) => (chunk) => {
+      const lines = chunk.toString("utf-8").split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim()) broadcastEvent({ type: "bot-mei-log", line, stream });
+      }
+    };
+    proc.stdout.on("data", onData("stdout"));
+    proc.stderr.on("data", onData("stderr"));
+    proc.on("close", (code) => {
+      botMeiProcess = null;
+      if (code === 0) {
+        broadcastEvent({ type: "bot-mei-done", code });
+        sendBotEmail(getRobotsConfig().mei, "T-MEI");
+      } else {
+        broadcastEvent({ type: "bot-mei-error", code, error: `Processo encerrado com código ${code}` });
+      }
+    });
+    proc.on("error", (err) => {
+      botMeiProcess = null;
+      broadcastEvent({ type: "bot-mei-error", code: -1, error: err.message });
+    });
+    return sendJson(res, 200, { ok: true, started: true });
+  }
+
+  if (req.url === "/api/bot-mei/stop" && req.method === "POST") {
+    if (botMeiProcess) { botMeiProcess.kill(); botMeiProcess = null; }
+    return sendJson(res, 200, { ok: true });
   }
 
   if (requestUrl.pathname === "/api/agenda" && req.method === "GET") {

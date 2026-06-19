@@ -2182,7 +2182,7 @@ export default function App() {
   const [usuarioForm,setUsuarioForm]=useState({name:"",login:"",senha:"",role:"operador",color:"#6366f1",pages:[]});
   const [clienteEditCnpj,setClienteEditCnpj]=useState(null);
   const [clienteFormOpen,setClienteFormOpen]=useState(false);
-  const [clienteForm,setClienteForm]=useState({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",tarefas:TAREFAS_SIMPLES.join("\n")});
+  const [clienteForm,setClienteForm]=useState({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});
   const [cnpjFetching,setCnpjFetching]=useState(false);
   const [cnpjFetchErr,setCnpjFetchErr]=useState("");
   // Functional updater helper — never captures stale clienteForm
@@ -2199,7 +2199,7 @@ export default function App() {
   const [deletionLogOpen,setDeletionLogOpen]=useState(false);
   const [deletionLogItems,setDeletionLogItems]=useState<any[]>([]);
   const [deletionLogLoading,setDeletionLogLoading]=useState(false);
-  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailAtivo:false,emailRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}],logRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false}]});
+  const [appSettings,setAppSettings]=useState({dashboardAnnouncement:"",emailGmailUser:"",emailGmailPass:"",emailDestino:"",emailAtivo:false,emailRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"15",horario:"08:00",ativo:false}],logRotinas:[{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false},{diaEnvio:"1",horario:"08:00",ativo:false}],robotsConfig:{iss:{pastaDownloads:"",emailAtivo:false,emailRemetente:"",emailSenha:"",emailDestinatario:""},siga:{pastaDownloads:"",emailAtivo:false,emailRemetente:"",emailSenha:"",emailDestinatario:""},mei:{pastaDownloads:"",emailAtivo:false,emailRemetente:"",emailSenha:"",emailDestinatario:""}}});
   const [configMsg,setConfigMsg]=useState("");
   const [dteFile,setDteFile]=useState(null);
   const [sistemaFile,setSistemaFile]=useState(null);
@@ -2241,6 +2241,17 @@ export default function App() {
   const [roboissLog,setRoboissLog]=useState<{text:string,stream:string}[]>([]);
   const [roboissResult,setRoboissResult]=useState<{ok:boolean,msg:string}|null>(null);
   const roboissLogRef=useRef<HTMLDivElement|null>(null);
+  const [ferramentasRobo,setFerramentasRobo]=useState<"iss"|"siga"|"mei">("iss");
+  const [robotConfigModal,setRobotConfigModal]=useState<"iss"|"siga"|"mei"|null>(null);
+  const [botSigaRunning,setBotSigaRunning]=useState(false);
+  const [botSigaLog,setBotSigaLog]=useState<{text:string,stream:string}[]>([]);
+  const [botSigaResult,setBotSigaResult]=useState<{ok:boolean,msg:string}|null>(null);
+  const [botSigaToast,setBotSigaToast]=useState<{ok:boolean,msg:string}|null>(null);
+  const sigaLogRef=useRef<HTMLDivElement|null>(null);
+  const [botMeiRunning,setBotMeiRunning]=useState(false);
+  const [botMeiLog,setBotMeiLog]=useState<{text:string,stream:string}[]>([]);
+  const [botMeiResult,setBotMeiResult]=useState<{ok:boolean,msg:string}|null>(null);
+  const meiLogRef=useRef<HTMLDivElement|null>(null);
   const [saveStatus,setSaveStatus]=useState("Carregando banco local...");
   const [hoje,setHoje]=useState(getTodayInTimeZone);
   const [agendaItems,setAgendaItems]=useState<any[]>([]);
@@ -2299,11 +2310,15 @@ export default function App() {
       logRotinas:(()=>{
         const saved=data?.appSettings?.logRotinas;
         if(Array.isArray(saved)&&saved.length>=4) return saved.slice(0,4);
-        // migração: se tinha logRotina singular, converte
         const old=data?.appSettings?.logRotina;
         const base=old&&old.diaEnvio?[old]:[{diaEnvio:"1",horario:"08:00",ativo:false}];
         while(base.length<4) base.push({diaEnvio:"1",horario:"08:00",ativo:false});
         return base;
+      })(),
+      robotsConfig:(()=>{
+        const rc=data?.appSettings?.robotsConfig||{};
+        const mk=(x:any)=>({pastaDownloads:String(x?.pastaDownloads||""),emailAtivo:Boolean(x?.emailAtivo||false),emailRemetente:String(x?.emailRemetente||""),emailSenha:String(x?.emailSenha||""),emailDestinatario:String(x?.emailDestinatario||"")});
+        return{iss:mk(rc.iss),siga:mk(rc.siga),mei:mk(rc.mei)};
       })(),
     });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
@@ -2407,6 +2422,28 @@ export default function App() {
         if(data.type==="bot-iss-log"){setRoboissLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
         if(data.type==="bot-iss-done"){setRoboissRunning(false);setRoboissResult({ok:true,msg:"Bot concluído com sucesso."});}
         if(data.type==="bot-iss-error"){setRoboissRunning(false);setRoboissResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
+        if(data.type==="bot-siga-started"){setBotSigaRunning(true);setBotSigaResult(null);setBotSigaLog([]);}
+        if(data.type==="bot-siga-log"){setBotSigaLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
+        if(data.type==="bot-siga-done"){
+          setBotSigaRunning(false);
+          setBotSigaResult({ok:true,msg:"Processo concluído com sucesso."});
+          setBotSigaToast({ok:true,msg:"T-SIGA finalizado com sucesso!"});
+          if(Notification.permission==="granted"){new Notification("T-SIGA",{body:"Processo finalizado com sucesso!",icon:"/favicon.ico"});}
+          else if(Notification.permission!=="denied"){Notification.requestPermission().then(p=>{if(p==="granted")new Notification("T-SIGA",{body:"Processo finalizado com sucesso!",icon:"/favicon.ico"});});}
+          setTimeout(()=>setBotSigaToast(null),8000);
+        }
+        if(data.type==="bot-siga-error"){
+          setBotSigaRunning(false);
+          const errMsg=data.error||`Erro (código ${data.code})`;
+          setBotSigaResult({ok:false,msg:errMsg});
+          setBotSigaToast({ok:false,msg:`T-SIGA encerrou com erro: ${errMsg}`});
+          if(Notification.permission==="granted"){new Notification("T-SIGA — Erro",{body:errMsg,icon:"/favicon.ico"});}
+          setTimeout(()=>setBotSigaToast(null),12000);
+        }
+        if(data.type==="bot-mei-started"){setBotMeiRunning(true);setBotMeiResult(null);setBotMeiLog([]);}
+        if(data.type==="bot-mei-log"){setBotMeiLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
+        if(data.type==="bot-mei-done"){setBotMeiRunning(false);setBotMeiResult({ok:true,msg:"Bot concluído com sucesso."});}
+        if(data.type==="bot-mei-error"){setBotMeiRunning(false);setBotMeiResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
       }catch{}
     };
     source.onerror=()=>setSaveStatus("Sincronização em tempo real tentando reconectar...");
@@ -2416,7 +2453,15 @@ export default function App() {
     if(roboissLogRef.current){roboissLogRef.current.scrollTop=roboissLogRef.current.scrollHeight;}
   },[roboissLog]);
   useEffect(()=>{
+    if(sigaLogRef.current){sigaLogRef.current.scrollTop=sigaLogRef.current.scrollHeight;}
+  },[botSigaLog]);
+  useEffect(()=>{
+    if(meiLogRef.current){meiLogRef.current.scrollTop=meiLogRef.current.scrollHeight;}
+  },[botMeiLog]);
+  useEffect(()=>{
     fetch(apiUrl("/api/bot-iss/status")).then(r=>r.json()).then(d=>{if(d.running)setRoboissRunning(true);}).catch(()=>{});
+    fetch(apiUrl("/api/bot-siga/status")).then(r=>r.json()).then(d=>{if(d.running)setBotSigaRunning(true);}).catch(()=>{});
+    fetch(apiUrl("/api/bot-mei/status")).then(r=>r.json()).then(d=>{if(d.running)setBotMeiRunning(true);}).catch(()=>{});
   },[]);
   useEffect(()=>{
     if(user?.id) loadAgenda(user.id).catch(()=>{});
@@ -2669,7 +2714,7 @@ export default function App() {
     resetUsuarioForm();
     setConfigMsg("Usuário salvo.");
   };
-  const resetClienteForm=()=>{setClienteEditCnpj(null);setClienteFormOpen(false);setCnpjFetchErr("");setClienteForm({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",tarefas:TAREFAS_SIMPLES.join("\n")});setNovaTarefaForm(novaTarefaEmpty);setNovaTarefaOpen(false);setNovaTarefaErro("");};
+  const resetClienteForm=()=>{setClienteEditCnpj(null);setClienteFormOpen(false);setCnpjFetchErr("");setClienteForm({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});setNovaTarefaForm(novaTarefaEmpty);setNovaTarefaOpen(false);setNovaTarefaErro("");};
   const openNewClienteModal=()=>{resetClienteForm();setClienteFormOpen(true);};
   const openEditClienteModal=(c)=>{editClienteConfig(c);setClienteFormOpen(true);};
   const editClienteConfig=(c)=>{
@@ -2690,6 +2735,7 @@ export default function App() {
       loginIss:c.loginIss||"",
       senhaIss:c.senhaIss||"",
       emailEnvioIss:c.emailEnvioIss||"",
+      confereSiga:!!c.confereSiga,
       tarefas:getClientTarefas(c).join("\n")
     });
   };
@@ -2771,6 +2817,7 @@ export default function App() {
       uf:clienteForm.uf.trim()||"",
       enviaIss:!!clienteForm.enviaIss,
       loginIss:clienteForm.loginIss.trim()||"",
+      confereSiga:!!clienteForm.confereSiga,
       senhaIss:clienteForm.senhaIss.trim()||"",
       emailEnvioIss:clienteForm.emailEnvioIss.trim()||"",
       tarefas
@@ -3361,6 +3408,17 @@ export default function App() {
   // MAIN
   return(
     <div style={S.page}>
+      {/* Toast de conclusão do T-SIGA */}
+      {botSigaToast&&(
+        <div onClick={()=>setBotSigaToast(null)} style={{position:"fixed",bottom:28,right:28,zIndex:9999,minWidth:300,maxWidth:420,padding:"16px 20px",borderRadius:12,background:botSigaToast.ok?"#052e16":"#450a0a",border:`2px solid ${botSigaToast.ok?"#16a34a":"#dc2626"}`,boxShadow:"0 8px 32px rgba(0,0,0,0.5)",cursor:"pointer",display:"flex",alignItems:"flex-start",gap:14,animation:"fadeInUp 0.3s ease"}}>
+          <span style={{fontSize:26,lineHeight:1}}>{botSigaToast.ok?"✅":"❌"}</span>
+          <div style={{flex:1}}>
+            <div style={{fontWeight:700,fontSize:14,color:botSigaToast.ok?"#4ade80":"#f87171",marginBottom:4}}>T-SIGA</div>
+            <div style={{fontSize:13,color:botSigaToast.ok?"#86efac":"#fca5a5",lineHeight:1.4}}>{botSigaToast.msg}</div>
+            <div style={{fontSize:10,color:"#64748b",marginTop:6}}>Clique para fechar</div>
+          </div>
+        </div>
+      )}
       <div style={S.header}>        <TesseratoLogo size={34}/>
         <div style={{marginRight:8}}>
           <div style={{fontWeight:700,fontSize:15}}>Setor Fiscal</div>
@@ -3368,10 +3426,10 @@ export default function App() {
         </div>
         <div style={{display:"flex",gap:4}}>
           {(user.role==="admin"
-            ?["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","roboiss","parametros"]
-            :(user.pages?.length>0?user.pages:["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","roboiss"])
+            ?["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","ferramentas","parametros"]
+            :(user.pages?.length>0?user.pages:["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","ferramentas"])
           ).map(p=>{
-            const lbl:Record<string,string>={intranet:"Intranet",dashboard:"Dashboard",clientes:"Clientes",calendario:"Calendário",conferencia:"Conferência",relatorios:"Relatórios",historico:"Histórico",cadastros:"Empresas",parcelamentos:"Parcelamentos",roboiss:"🤖 Robô ISS",parametros:"Parâmetros"};
+            const lbl:Record<string,string>={intranet:"Intranet",dashboard:"Dashboard",clientes:"Clientes",calendario:"Calendário",conferencia:"Conferência",relatorios:"Relatórios",historico:"Histórico",cadastros:"Empresas",parcelamentos:"Parcelamentos",ferramentas:"⚙ Ferramentas",parametros:"Parâmetros"};
             return(<button key={p} onClick={()=>setPage(p)} style={S.btn(page===p)}>{lbl[p]||p}</button>);
           })}
         </div>
@@ -3693,190 +3751,328 @@ export default function App() {
           );
         })()}
 
-        {/* ROBÔ ISS */}
-        {page==="roboiss"&&(()=>{
-          const issClientes=clientesData.filter(c=>!!c.enviaIss&&(user.role==="admin"||(c.responsavel||"").toUpperCase()===(user.name||"").toUpperCase()));
-          const GRUPO_LABEL:Record<string,string>={normal:"Regime Normal",simples:"Simples Nacional",mei:"MEI"};
-          const grupos=["TODOS",...Array.from(new Set(issClientes.map(c=>c.grupo||"").filter(Boolean))).sort()];
-          const filtrados=issClientes.filter(c=>{
-            const grupoOk=roboissGrupo==="TODOS"||(c.grupo||"")===roboissGrupo;
-            const q=(roboissSearch||"").trim();
-            if(!q) return grupoOk;
+        {/* FERRAMENTAS */}
+        {page==="ferramentas"&&(()=>{
+          const fmtCnpj=(v:string)=>{const d=v.replace(/\D/g,"");if(d.length===14)return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,"$1.$2.$3/$4-$5");return v;};
+          const getIssStatus=(c:any)=>{
+            const issVal=state[c.cnpj]?.[mesAtual]?.tarefas?.["ISS"];
+            if(issVal&&typeof issVal==="string"&&issVal.trim()){
+              const d=new Date(issVal);
+              const label=!isNaN(d.getTime())?d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):issVal;
+              return{done:true,label:`Concluído ${label}`};
+            }
+            return{done:false,label:"Pendente"};
+          };
+
+          // lista de clientes para cada robô (sempre filtrada por responsável)
+          const allClientes=clientesData.filter(c=>user.role==="admin"||(c.responsavel||"").toUpperCase()===(user.name||"").toUpperCase());
+          const issClientes=allClientes.filter(c=>!!c.enviaIss);
+          const sigaClientes=allClientes.filter(c=>!!c.confereSiga);
+          const meiClientes=allClientes.filter(c=>(c.regime||"").toLowerCase()==="mei");
+          const listaAtual=ferramentasRobo==="iss"?issClientes:ferramentasRobo==="siga"?sigaClientes:ferramentasRobo==="mei"?meiClientes:allClientes;
+
+          const q=(roboissSearch||"").trim().toLowerCase();
+          const filtrados=listaAtual.filter(c=>{
+            if(!q)return true;
             const nome=(c.nome||"").toLowerCase();
             const cnpjRaw=(c.cnpj||"").replace(/\D/g,"");
             const qRaw=q.replace(/\D/g,"");
-            const buscaOk=nome.includes(q.toLowerCase())||(qRaw.length>0&&cnpjRaw.includes(qRaw));
-            return grupoOk&&buscaOk;
+            return nome.includes(q)||(qRaw.length>0&&cnpjRaw.includes(qRaw));
           });
+
           const allSelected=filtrados.length>0&&filtrados.every(c=>roboissQueue.has(c.cnpj));
           const toggleAll=()=>{
-            if(allSelected){
-              const next=new Set(roboissQueue);
-              filtrados.forEach(c=>next.delete(c.cnpj));
-              setRoboissQueue(next);
-            } else {
-              const next=new Set(roboissQueue);
-              filtrados.forEach(c=>next.add(c.cnpj));
-              setRoboissQueue(next);
-            }
+            const next=new Set(roboissQueue);
+            if(allSelected){filtrados.forEach(c=>next.delete(c.cnpj));}
+            else{filtrados.forEach(c=>next.add(c.cnpj));}
+            setRoboissQueue(next);
           };
           const toggleOne=(cnpj:string)=>{
             const next=new Set(roboissQueue);
             next.has(cnpj)?next.delete(cnpj):next.add(cnpj);
             setRoboissQueue(next);
           };
-          const getIssStatus=(c)=>{
-            const issVal=state[c.cnpj]?.[mesAtual]?.tarefas?.["ISS"];
-            if(issVal&&typeof issVal==="string"&&issVal.trim()){
-              const d=new Date(issVal);
-              const label=!isNaN(d.getTime())?d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"}):issVal;
-              return {done:true,label:`Concluído ${label}`};
+
+          const anyBotRunning=roboissRunning||botSigaRunning||botMeiRunning;
+          const activeRunning=ferramentasRobo==="iss"?roboissRunning:ferramentasRobo==="siga"?botSigaRunning:botMeiRunning;
+          const activeLog=ferramentasRobo==="iss"?roboissLog:ferramentasRobo==="siga"?botSigaLog:botMeiLog;
+          const activeResult=ferramentasRobo==="iss"?roboissResult:ferramentasRobo==="siga"?botSigaResult:botMeiResult;
+          const activeLogRef=ferramentasRobo==="iss"?roboissLogRef:ferramentasRobo==="siga"?sigaLogRef:meiLogRef;
+          const clearActiveLog=()=>{
+            if(ferramentasRobo==="iss"){setRoboissLog([]);setRoboissResult(null);}
+            else if(ferramentasRobo==="siga"){setBotSigaLog([]);setBotSigaResult(null);}
+            else{setBotMeiLog([]);setBotMeiResult(null);}
+          };
+
+          const botCards=[
+            {id:"iss" as const,label:"T-ISS",desc:"ISS Municipal",color:"#7dd8f0",running:roboissRunning},
+            {id:"siga" as const,label:"T-SIGA",desc:"SEFAZ SIGA",color:"#a78bfa",running:botSigaRunning},
+            {id:"mei" as const,label:"T-MEI",desc:"Portal MEI",color:"#6ee7b7",running:botMeiRunning},
+          ];
+
+          const handleRun=async()=>{
+            if(activeRunning||roboissQueue.size===0)return;
+            const selected=filtrados.filter(c=>roboissQueue.has(c.cnpj));
+            if(ferramentasRobo==="iss"){
+              setRoboissRunning(true);setRoboissResult(null);setRoboissLog([]);
+              try{
+                const empresasIss=selected.map(c=>({cnpj:c.cnpj,nome:c.nome,login:c.loginIss||"",senha:c.senhaIss||"",municipio:c.municipio||"",email:c.emailEnvioIss||""}));
+                const r=await fetch(apiUrl("/api/bot-iss/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas:empresasIss})});
+                const d=await r.json();
+                if(!d.ok){setRoboissRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
+              }catch{setRoboissRunning(false);alert("Erro de conexão.");}
+            } else if(ferramentasRobo==="siga"){
+              setBotSigaRunning(true);setBotSigaResult(null);setBotSigaLog([]);
+              try{
+                const empresas=selected.map(c=>({cnpj:c.cnpj,nome:c.nome}));
+                const r=await fetch(apiUrl("/api/bot-siga/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas})});
+                const d=await r.json();
+                if(!d.ok){setBotSigaRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
+              }catch{setBotSigaRunning(false);alert("Erro de conexão.");}
+            } else {
+              setBotMeiRunning(true);setBotMeiResult(null);setBotMeiLog([]);
+              try{
+                const empresas=selected.map(c=>({cnpj:c.cnpj,nome:c.nome}));
+                const r=await fetch(apiUrl("/api/bot-mei/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas})});
+                const d=await r.json();
+                if(!d.ok){setBotMeiRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
+              }catch{setBotMeiRunning(false);alert("Erro de conexão.");}
             }
-            return {done:false,label:"Pendente"};
           };
-          const fmtCnpj=(v:string)=>{
-            const d=v.replace(/\D/g,"");
-            if(d.length===14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,"$1.$2.$3/$4-$5");
-            return v;
-          };
+
+          const activeCard=botCards.find(b=>b.id===ferramentasRobo)!;
+          const canRun=!activeRunning&&roboissQueue.size>0;
+
           return(
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20,flexWrap:"wrap"}}>
-                <div style={{fontWeight:800,fontSize:14,color:"#7dd8f0",letterSpacing:0.5}}>ROBÔ ISS</div>
-                <div style={{fontSize:11,color:"#64748b",background:"#0d1f35",border:"1px solid #1e3a5a",borderRadius:20,padding:"3px 10px"}}>
-                  {issClientes.length} empresa{issClientes.length!==1?"s":""} com ISS ativo
-                </div>
-                {roboissQueue.size>0&&(
-                  <div style={{fontSize:11,fontWeight:700,color:"#fbbf24",background:"#1c1200",border:"1px solid #92400e",borderRadius:20,padding:"3px 10px"}}>
-                    {roboissQueue.size} na fila
-                  </div>
-                )}
-                <div style={{marginLeft:"auto",display:"flex",gap:8,alignItems:"center"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+              {/* ── Seletor de robô ── */}
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10}}>
+                {botCards.map(bc=>{
+                  const active=ferramentasRobo===bc.id;
+                  const listLen=bc.id==="iss"?issClientes.length:bc.id==="siga"?sigaClientes.length:meiClientes.length;
+                  return(
+                    <div key={bc.id} onClick={()=>setFerramentasRobo(bc.id)}
+                      style={{position:"relative",background:active?"#071929":"#060f1e",border:`1.5px solid ${active?bc.color:"#1a2f45"}`,borderRadius:12,padding:"16px 18px",cursor:"pointer",transition:"border-color .15s,background .15s",overflow:"hidden"}}
+                    >
+                      <div style={{position:"absolute",top:0,left:0,width:"100%",height:3,background:active?bc.color:"transparent",borderRadius:"12px 12px 0 0",transition:"background .15s"}}/>
+                      <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}>
+                        <div style={{fontWeight:700,fontSize:18,color:active?bc.color:"#475569",letterSpacing:0.5,transition:"color .15s"}}>{bc.label}</div>
+                        {bc.running?(
+                          <span style={{fontSize:9,fontWeight:700,color:"#fbbf24",background:"rgba(146,64,14,0.35)",border:"1px solid #92400e",borderRadius:20,padding:"2px 8px",whiteSpace:"nowrap"}}>RODANDO</span>
+                        ):(
+                          <span style={{fontSize:10,color:active?"#475569":"#2d4a63",fontWeight:600}}>{listLen} empresa{listLen!==1?"s":""}</span>
+                        )}
+                      </div>
+                      <div style={{fontSize:11,color:active?"#64748b":"#2d4a63",letterSpacing:0.2}}>{bc.desc}</div>
+                      {active&&roboissQueue.size>0&&(
+                        <div style={{marginTop:8,fontSize:10,color:bc.color,fontWeight:600}}>{roboissQueue.size} selecionada{roboissQueue.size!==1?"s":""}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* ── Barra de ações ── */}
+              <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
+                <div style={{position:"relative",flex:"1 1 220px",minWidth:180}}>
+                  <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#475569",fontSize:13,pointerEvents:"none"}}>⌕</span>
                   <input
                     value={roboissSearch}
                     onChange={e=>setRoboissSearch(e.target.value)}
                     placeholder="Buscar empresa ou CNPJ…"
-                    style={{...S.input,width:220,fontSize:12,padding:"6px 10px"}}
+                    style={{...S.input,width:"100%",paddingLeft:28,fontSize:12,boxSizing:"border-box"}}
                   />
-                  <select value={roboissGrupo} onChange={e=>setRoboissGrupo(e.target.value)} style={{...S.input,width:"auto",fontSize:12,padding:"6px 10px"}}>
-                    {grupos.map(g=><option key={g} value={g}>{g==="TODOS"?"Todos os grupos":(GRUPO_LABEL[g]||g)}</option>)}
-                  </select>
-                  {(roboissQueue.size>0||roboissRunning)&&(
-                    <button
-                      disabled={roboissRunning}
-                      onClick={async()=>{
-                        if(roboissRunning)return;
-                        setRoboissRunning(true);
-                        setRoboissResult(null);
-                        setRoboissLog([]);
-                        try{
-                          const r=await fetch(apiUrl("/api/bot-iss/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cnpjs:[...roboissQueue]})});
-                          const d=await r.json();
-                          if(!d.ok){setRoboissRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
-                        }catch{
-                          setRoboissRunning(false);
-                          alert("Erro de conexão com o servidor.");
-                        }
-                      }}
-                      style={{background:roboissRunning?"#1e3a5a":"linear-gradient(135deg,#f59e0b,#d97706)",border:"none",color:roboissRunning?"#7dd8f0":"#000",fontWeight:800,fontSize:12,padding:"7px 16px",borderRadius:8,cursor:roboissRunning?"not-allowed":"pointer",whiteSpace:"nowrap",opacity:roboissRunning?0.7:1,transition:"all .2s"}}
-                    >
-                      {roboissRunning?"⏳ Executando...":"▶ Executar Robô ISS"}{!roboissRunning&&roboissQueue.size>0?` (${roboissQueue.size})`:""}
-                    </button>
-                  )}
                 </div>
+                <button
+                  onClick={()=>{const next=new Set<string>();filtrados.forEach(c=>next.add(c.cnpj));setRoboissQueue(next);}}
+                  style={{background:"#071929",border:"1px solid #1a2f45",borderRadius:7,color:"#64748b",fontSize:11,padding:"6px 12px",cursor:"pointer",whiteSpace:"nowrap"}}
+                >
+                  Selecionar todos
+                </button>
+                <button
+                  onClick={()=>setRoboissQueue(new Set())}
+                  style={{background:"#071929",border:"1px solid #1a2f45",borderRadius:7,color:"#475569",fontSize:11,padding:"6px 12px",cursor:"pointer",whiteSpace:"nowrap"}}
+                >
+                  Limpar seleção
+                </button>
+                <div style={{flex:1}}/>
+                <button
+                  disabled={!canRun}
+                  onClick={handleRun}
+                  style={{
+                    display:"flex",alignItems:"center",gap:8,padding:"8px 20px",
+                    background:canRun?activeCard.color:"#0d1e30",
+                    border:`1.5px solid ${canRun?activeCard.color:"#1a2f45"}`,
+                    borderRadius:8,
+                    color:canRun?"#040c17":"#2d4a63",
+                    fontWeight:700,fontSize:12,
+                    cursor:canRun?"pointer":"not-allowed",
+                    transition:"all .15s",whiteSpace:"nowrap",
+                  }}
+                >
+                  {activeRunning?(
+                    <><span style={{display:"inline-block",animation:"spin 1s linear infinite",fontSize:12}}>◌</span> Executando…</>
+                  ):(
+                    <><span style={{fontSize:11}}>▶</span> Executar {activeCard.label}{roboissQueue.size>0?` (${roboissQueue.size})`:""}</>
+                  )}
+                </button>
               </div>
 
-              <div style={{borderRadius:10,border:"1px solid #1e3a5a",overflowX:"visible"}}>
+              {/* ── Tabela de clientes ── */}
+              <div style={{borderRadius:10,border:"1px solid #1a2f45",overflow:"hidden"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12,tableLayout:"fixed"}}>
                   <colgroup>
-                    <col style={{width:36}}/>
-                    <col style={{minWidth:200}}/>
-                    <col style={{width:148}}/>
-                    <col style={{width:130}}/>
-                    <col style={{width:120}}/>
-                    <col style={{width:110}}/>
-                    <col style={{width:110}}/>
-                    <col style={{minWidth:190}}/>
-                    <col style={{width:130}}/>
+                    <col style={{width:40}}/>
+                    <col/>
+                    <col style={{width:145}}/>
+                    {ferramentasRobo==="iss"&&<>
+                      <col style={{width:100}}/>
+                      <col style={{width:120}}/>
+                      <col style={{width:108}}/>
+                      <col style={{width:108}}/>
+                      <col style={{width:118}}/>
+                    </>}
+                    {(ferramentasRobo==="siga"||ferramentasRobo==="mei")&&<col style={{width:130}}/>}
                   </colgroup>
                   <thead>
-                    <tr style={{background:"#071929",borderBottom:"1px solid #1e3a5a"}}>
+                    <tr style={{background:"#040d19",borderBottom:`2px solid ${activeCard.color}22`}}>
                       <th style={{padding:"10px 8px",textAlign:"center"}}>
-                        <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{cursor:"pointer",accentColor:"#f59e0b"}}/>
+                        <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{cursor:"pointer",accentColor:activeCard.color}}/>
                       </th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#7dd8f0",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>EMPRESA</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#7dd8f0",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>CNPJ</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#7dd8f0",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>REGIME</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#7dd8f0",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>MUNICÍPIO</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#fbbf24",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>LOGIN ISS</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#fbbf24",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>SENHA ISS</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#fbbf24",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>EMAIL ENVIO</th>
-                      <th style={{padding:"10px 8px",textAlign:"left",color:"#7dd8f0",fontWeight:700,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>ISS — {mesAtual}</th>
+                      <th style={{padding:"10px 10px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Empresa</th>
+                      <th style={{padding:"10px 10px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>CNPJ</th>
+                      {ferramentasRobo==="iss"&&<>
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Regime</th>
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Município</th>
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#b45309",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Login ISS</th>
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#b45309",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Senha ISS</th>
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>ISS {mesAtual}</th>
+                      </>}
+                      {(ferramentasRobo==="siga"||ferramentasRobo==="mei")&&(
+                        <th style={{padding:"10px 8px",textAlign:"left",color:"#475569",fontWeight:600,fontSize:10,letterSpacing:1,textTransform:"uppercase"}}>Responsável</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
                     {filtrados.length===0&&(
-                      <tr><td colSpan={9} style={{padding:"28px",textAlign:"center",color:"#4a6a8a",fontSize:13}}>Nenhuma empresa encontrada.</td></tr>
+                      <tr><td colSpan={9} style={{padding:32,textAlign:"center",color:"#2d4a63",fontSize:13}}>Nenhuma empresa encontrada.</td></tr>
                     )}
                     {filtrados.map((c,i)=>{
                       const sel=roboissQueue.has(c.cnpj);
-                      const issStatus=getIssStatus(c);
                       return(
-                        <tr key={c.cnpj} style={{borderBottom:"1px solid #0f2a42",background:sel?"#071d35":i%2===0?"#060f1e":"#071929",cursor:"pointer",transition:"background .1s"}}
-                          onClick={()=>toggleOne(c.cnpj)}
+                        <tr key={c.cnpj} onClick={()=>toggleOne(c.cnpj)}
+                          style={{
+                            borderBottom:"1px solid #0b1e30",
+                            background:sel?`${activeCard.color}0f`:i%2===0?"#050e1a":"#060f1e",
+                            cursor:"pointer",transition:"background .1s",
+                          }}
                         >
-                          <td style={{padding:"9px 8px",textAlign:"center"}} onClick={e=>{e.stopPropagation();toggleOne(c.cnpj);}}>
-                            <input type="checkbox" checked={sel} onChange={()=>toggleOne(c.cnpj)} style={{cursor:"pointer",accentColor:"#f59e0b"}}/>
+                          <td style={{padding:"8px 8px",textAlign:"center",borderLeft:sel?`2.5px solid ${activeCard.color}`:"2.5px solid transparent"}} onClick={e=>{e.stopPropagation();toggleOne(c.cnpj);}}>
+                            <input type="checkbox" checked={sel} onChange={()=>toggleOne(c.cnpj)} style={{cursor:"pointer",accentColor:activeCard.color}}/>
                           </td>
-                          <td style={{padding:"9px 8px",color:"#e2e8f0",fontWeight:600,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.nome}</td>
-                          <td style={{padding:"9px 8px",color:"#94a3b8",fontFamily:"monospace",fontSize:11,whiteSpace:"nowrap"}}>{fmtCnpj(c.cnpj)}</td>
-                          <td style={{padding:"9px 8px",overflow:"hidden"}}>
-                            <span style={{background:"#0c1f35",border:"1px solid #1e3a5a",borderRadius:4,padding:"2px 6px",fontSize:10,fontWeight:700,color:"#7dd8f0",whiteSpace:"nowrap",display:"block",overflow:"hidden",textOverflow:"ellipsis"}}>{c.regime||"—"}</span>
+                          <td style={{padding:"8px 10px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            <span style={{color:sel?activeCard.color:"#cbd5e1",fontWeight:sel?600:400,fontSize:12}}>{c.nome}</span>
                           </td>
-                          <td style={{padding:"9px 8px",color:"#64748b",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.municipio||"—"}</td>
-                          <td style={{padding:"9px 8px",color:"#fde68a",fontSize:11,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.loginIss||"—"}</td>
-                          <td style={{padding:"9px 8px",color:"#fde68a",fontSize:11,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.senhaIss||"—"}</td>
-                          <td style={{padding:"9px 8px",color:"#fde68a",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.emailEnvioIss||"—"}</td>
-                          <td style={{padding:"9px 8px"}}>
-                            <span style={{background:issStatus.done?"#052e1b":"#2d0f00",border:`1px solid ${issStatus.done?"#10b981":"#c2410c"}`,borderRadius:4,padding:"2px 8px",fontSize:10,fontWeight:700,color:issStatus.done?"#6ee7b7":"#fca5a5",whiteSpace:"nowrap"}}>
-                              {issStatus.label}
-                            </span>
-                          </td>
+                          <td style={{padding:"8px 10px",color:"#475569",fontFamily:"'Cascadia Code','Consolas',monospace",fontSize:11,whiteSpace:"nowrap"}}>{fmtCnpj(c.cnpj)}</td>
+                          {ferramentasRobo==="iss"&&(()=>{
+                            const issStatus=getIssStatus(c);
+                            return<>
+                              <td style={{padding:"8px 8px"}}>
+                                <span style={{background:"#0b1e30",border:"1px solid #1a2f45",borderRadius:5,padding:"2px 7px",fontSize:10,fontWeight:600,color:"#64748b"}}>{c.regime||"—"}</span>
+                              </td>
+                              <td style={{padding:"8px 8px",color:"#475569",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.municipio||"—"}</td>
+                              <td style={{padding:"8px 8px",color:"#d97706",fontSize:11,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.loginIss||"—"}</td>
+                              <td style={{padding:"8px 8px",color:"#d97706",fontSize:11,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.senhaIss||"—"}</td>
+                              <td style={{padding:"8px 8px"}}>
+                                <span style={{
+                                  background:issStatus.done?"#052e1b":"#1a0800",
+                                  border:`1px solid ${issStatus.done?"#065f46":"#7c2d12"}`,
+                                  borderRadius:5,padding:"2px 8px",fontSize:10,fontWeight:600,
+                                  color:issStatus.done?"#34d399":"#fb923c",whiteSpace:"nowrap",
+                                }}>
+                                  {issStatus.done?"✓ ":""}{issStatus.label}
+                                </span>
+                              </td>
+                            </>;
+                          })()}
+                          {(ferramentasRobo==="siga"||ferramentasRobo==="mei")&&(
+                            <td style={{padding:"8px 8px",color:"#475569",fontSize:11,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.responsavel||"—"}</td>
+                          )}
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
+                {filtrados.length>0&&(
+                  <div style={{padding:"7px 14px",background:"#040d19",borderTop:"1px solid #0b1e30",fontSize:10,color:"#2d4a63",textAlign:"right"}}>
+                    {filtrados.length} empresa{filtrados.length!==1?"s":""} exibida{filtrados.length!==1?"s":""}
+                    {roboissSearch?" · filtrada":""}
+                    {roboissQueue.size>0&&<span style={{color:activeCard.color,marginLeft:6}}>· {roboissQueue.size} selecionada{roboissQueue.size!==1?"s":""}</span>}
+                  </div>
+                )}
               </div>
-              {filtrados.length>0&&(
-                <div style={{fontSize:10,color:"#4a6a8a",marginTop:8,textAlign:"right"}}>
-                  {filtrados.length} empresa{filtrados.length!==1?"s":""}  exibida{filtrados.length!==1?"s":""}
-                  {roboissSearch||roboissGrupo!=="TODOS"?" (filtradas)":""}
-                </div>
-              )}
-              {(roboissRunning||roboissLog.length>0)&&(
-                <div style={{marginTop:20,background:"#050e1a",border:"1px solid #1e3a5a",borderRadius:10,overflow:"hidden"}}>
-                  <div style={{padding:"10px 14px",background:"#071929",borderBottom:"1px solid #1e3a5a",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
-                    <span style={{fontWeight:700,fontSize:12,color:"#7dd8f0"}}>Log de Execução</span>
-                    {roboissRunning&&(
-                      <span style={{fontSize:11,color:"#fbbf24",background:"#1c1200",border:"1px solid #92400e",borderRadius:20,padding:"2px 10px",fontWeight:700}}>⏳ Rodando...</span>
+
+              {/* ── Log de execução ── */}
+              {(activeRunning||activeLog.length>0)&&(
+                <div style={{borderRadius:10,border:`1px solid ${activeCard.color}33`,overflow:"hidden"}}>
+                  <div style={{padding:"10px 14px",background:"#040d19",borderBottom:`1px solid ${activeCard.color}22`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                    <div style={{width:6,height:6,borderRadius:"50%",background:activeRunning?"#fbbf24":activeResult?.ok?"#34d399":"#64748b",flexShrink:0}}/>
+                    <span style={{fontWeight:600,fontSize:12,color:activeCard.color}}>{activeCard.label}</span>
+                    <span style={{fontSize:11,color:"#475569"}}>— log de execução</span>
+                    {activeRunning&&(
+                      <span style={{fontSize:10,color:"#fbbf24",background:"rgba(146,64,14,0.25)",border:"1px solid #92400e33",borderRadius:20,padding:"2px 10px",fontWeight:600}}>rodando…</span>
                     )}
-                    {!roboissRunning&&roboissResult&&(
-                      <span style={{fontSize:11,fontWeight:700,color:roboissResult.ok?"#6ee7b7":"#fca5a5",background:roboissResult.ok?"#052e1b":"#2d0f00",border:`1px solid ${roboissResult.ok?"#10b981":"#c2410c"}`,borderRadius:20,padding:"2px 10px"}}>
-                        {roboissResult.ok?"✓ Concluído":"✗ Erro"} — {roboissResult.msg}
+                    {!activeRunning&&activeResult&&(
+                      <span style={{fontSize:10,fontWeight:600,
+                        color:activeResult.ok?"#34d399":"#f87171",
+                        background:activeResult.ok?"rgba(5,46,27,0.5)":"rgba(45,15,0,0.5)",
+                        border:`1px solid ${activeResult.ok?"#065f4633":"#7c2d1233"}`,
+                        borderRadius:20,padding:"2px 10px",
+                      }}>
+                        {activeResult.ok?"✓":"✗"} {activeResult.msg}
                       </span>
                     )}
-                    {!roboissRunning&&(
-                      <button onClick={()=>{setRoboissLog([]);setRoboissResult(null);}} style={{marginLeft:"auto",background:"transparent",border:"1px solid #1e3a5a",borderRadius:4,color:"#64748b",fontSize:10,padding:"2px 8px",cursor:"pointer"}}>Limpar</button>
+                    {!activeRunning&&(
+                      <button onClick={clearActiveLog}
+                        style={{marginLeft:"auto",background:"transparent",border:"1px solid #1a2f45",borderRadius:5,color:"#2d4a63",fontSize:10,padding:"2px 10px",cursor:"pointer"}}
+                      >Limpar</button>
                     )}
                   </div>
-                  <div ref={roboissLogRef} style={{height:280,overflowY:"auto",padding:"10px 14px",fontFamily:"'Cascadia Code','Consolas',monospace",fontSize:11,lineHeight:1.7,background:"#040c17"}}>
-                    {roboissLog.length===0&&(
-                      <div style={{color:"#4a6a8a",fontStyle:"italic"}}>Aguardando saída do bot...</div>
+                  <div ref={activeLogRef}
+                    style={{height:260,overflowY:"auto",padding:"12px 16px",fontFamily:"'Cascadia Code','Consolas',monospace",fontSize:11,lineHeight:1.75,background:"#030a12"}}
+                  >
+                    {activeLog.length===0&&(
+                      <span style={{color:"#1e3a5a",fontStyle:"italic"}}>aguardando saída do processo…</span>
                     )}
-                    {roboissLog.map((l,i)=>(
-                      <div key={i} style={{color:l.stream==="stderr"?"#fca5a5":"#86efac",wordBreak:"break-all",whiteSpace:"pre-wrap"}}>{l.text}</div>
-                    ))}
+                    {activeLog.map((l,i)=>{
+                      const txt=l.text||"";
+                      if(txt.startsWith("__OK__:")){
+                        const parts=txt.slice(7).split(":");
+                        const cnpjOk=parts[0]||"";
+                        const nomeOk=parts.slice(1).join(":")||cnpjOk;
+                        return(
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"4px 8px",background:"#052e16",border:"1px solid #166534",borderRadius:6,wordBreak:"break-all",whiteSpace:"pre-wrap"}}>
+                            <span style={{color:"#4ade80",fontWeight:700,fontSize:13}}>✓ OK</span>
+                            <span style={{color:"#86efac"}}>{nomeOk}</span>
+                            <span style={{color:"#4ade80",opacity:0.6,fontSize:10,marginLeft:"auto"}}>{cnpjOk}</span>
+                          </div>
+                        );
+                      }
+                      if(txt.startsWith("__ERRO__:")){
+                        const parts=txt.slice(9).split(":");
+                        const cnpjErr=parts[0]||"";
+                        const nomeErr=parts.slice(1).join(":")||cnpjErr;
+                        return(
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"4px 8px",background:"#450a0a",border:"1px solid #991b1b",borderRadius:6,wordBreak:"break-all",whiteSpace:"pre-wrap"}}>
+                            <span style={{color:"#f87171",fontWeight:700,fontSize:13}}>✗ ERRO</span>
+                            <span style={{color:"#fca5a5"}}>{nomeErr}</span>
+                            <span style={{color:"#f87171",opacity:0.6,fontSize:10,marginLeft:"auto"}}>{cnpjErr}</span>
+                          </div>
+                        );
+                      }
+                      return(<div key={i} style={{color:l.stream==="stderr"?"#f87171":"#4ade80",wordBreak:"break-all",whiteSpace:"pre-wrap"}}>{txt}</div>);
+                    })}
                   </div>
                 </div>
               )}
@@ -4351,6 +4547,100 @@ export default function App() {
                 </button>
               </div>
             </div>
+
+            {/* Configurações dos Robôs — botões */}
+            {(()=>{
+              const rcBots=[
+                {id:"iss" as const,label:"T-ISS",color:"#7dd8f0"},
+                {id:"siga" as const,label:"T-SIGA",color:"#a78bfa"},
+                {id:"mei" as const,label:"T-MEI",color:"#6ee7b7"},
+              ];
+              return(
+                <div style={S.card}>
+                  <div style={{fontWeight:700,fontSize:13,color:"#7dd8f0",marginBottom:14,letterSpacing:0.3}}>⚙ Configurações dos Robôs</div>
+                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+                    {rcBots.map(b=>{
+                      const rc=appSettings.robotsConfig[b.id];
+                      const configured=!!(rc.pastaDownloads||rc.emailDestinatario);
+                      return(
+                        <button key={b.id} onClick={()=>setRobotConfigModal(b.id)}
+                          style={{display:"flex",alignItems:"center",gap:10,background:"#040d19",border:`1.5px solid ${b.color}44`,borderRadius:10,padding:"12px 18px",cursor:"pointer",transition:"border-color .15s",minWidth:160}}
+                        >
+                          <span style={{width:9,height:9,borderRadius:"50%",background:b.color,flexShrink:0,display:"inline-block"}}/>
+                          <span style={{fontWeight:700,fontSize:13,color:b.color}}>{b.label}</span>
+                          {configured&&<span style={{marginLeft:"auto",fontSize:9,color:"#34d399",fontWeight:700,background:"#052e1b",border:"1px solid #065f46",borderRadius:20,padding:"1px 7px"}}>OK</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Modal de configuração do robô */}
+            {robotConfigModal&&(()=>{
+              const botMeta={iss:{label:"T-ISS",color:"#7dd8f0"},siga:{label:"T-SIGA",color:"#a78bfa"},mei:{label:"T-MEI",color:"#6ee7b7"}};
+              const meta=botMeta[robotConfigModal];
+              const rc=appSettings.robotsConfig[robotConfigModal];
+              const patch=(fields:any)=>setAppSettings(p=>({...p,robotsConfig:{...p.robotsConfig,[robotConfigModal]:{...p.robotsConfig[robotConfigModal],...fields}}}));
+              return(
+                <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setRobotConfigModal(null)}>
+                  <div style={{background:"#071929",border:`1.5px solid ${meta.color}55`,borderRadius:14,padding:"28px 32px",width:420,maxWidth:"94vw",boxShadow:"0 8px 40px rgba(0,0,0,0.6)"}} onClick={e=>e.stopPropagation()}>
+                    {/* Cabeçalho */}
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22}}>
+                      <span style={{width:10,height:10,borderRadius:"50%",background:meta.color,flexShrink:0,display:"inline-block"}}/>
+                      <span style={{fontWeight:700,fontSize:15,color:meta.color}}>{meta.label}</span>
+                      <span style={{fontSize:12,color:"#475569",marginLeft:2}}>— configurações</span>
+                      <button onClick={()=>setRobotConfigModal(null)} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#475569",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
+                    </div>
+
+                    {/* Pasta de downloads */}
+                    <div style={{marginBottom:18}}>
+                      <div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>📁 Pasta de downloads</div>
+                      <input
+                        value={rc.pastaDownloads}
+                        onChange={e=>patch({pastaDownloads:e.target.value})}
+                        placeholder={`C:\\Downloads\\${robotConfigModal.toUpperCase()}`}
+                        style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
+                      />
+                      <div style={{fontSize:10,color:"#2d4a63",marginTop:4}}>Pasta onde os arquivos gerados serão salvos no servidor.</div>
+                    </div>
+
+                    {/* Email */}
+                    <div style={{background:"#040d19",border:"1px solid #1a2f45",borderRadius:10,padding:"14px 16px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+                        <div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>✉ Envio por email</div>
+                        <label style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:11,color:rc.emailAtivo?"#34d399":"#475569",fontWeight:600}}>
+                          <input type="checkbox" checked={rc.emailAtivo} onChange={e=>patch({emailAtivo:e.target.checked})} style={{accentColor:meta.color}}/>
+                          {rc.emailAtivo?"Ativo":"Inativo"}
+                        </label>
+                      </div>
+                      <div style={{display:"grid",gap:8,opacity:rc.emailAtivo?1:0.4,pointerEvents:rc.emailAtivo?"auto":"none" as any}}>
+                        <div>
+                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Email remetente</label>
+                          <input value={rc.emailRemetente} onChange={e=>patch({emailRemetente:e.target.value})} placeholder="remetente@gmail.com" style={S.input}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Senha de app (Gmail)</label>
+                          <input type="password" value={rc.emailSenha} onChange={e=>patch({emailSenha:e.target.value})} placeholder="Senha de app Google" style={S.input}/>
+                        </div>
+                        <div>
+                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Email destinatário</label>
+                          <input value={rc.emailDestinatario} onChange={e=>patch({emailDestinatario:e.target.value})} placeholder="destinatario@email.com" style={S.input}/>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{marginTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                      <div style={{fontSize:10,color:"#2d4a63"}}>Salvo automaticamente ao fechar.</div>
+                      <button onClick={()=>setRobotConfigModal(null)}
+                        style={{background:meta.color,border:"none",color:"#040c17",fontWeight:700,fontSize:12,padding:"8px 20px",borderRadius:8,cursor:"pointer"}}
+                      >Fechar</button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Gerenciamento de usuários */}
             <div style={{display:"grid",gridTemplateColumns:"minmax(280px,.8fr) minmax(360px,1.2fr)",gap:14,alignItems:"start"}}>
@@ -5502,6 +5792,13 @@ ${sectionsHtml||`<p style="color:#94a3b8;text-align:center;padding:24pt;font-siz
                   </label>
                 </div>
               )}
+              <div style={{gridColumn:"1 / -1"}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,background:"#061729",border:`1px solid ${clienteForm.confereSiga?"#a78bfa":"#245a7c"}`,borderRadius:8,padding:"9px 12px",fontSize:12,color:clienteForm.confereSiga?"#a78bfa":"#bfefff",fontWeight:800,cursor:"pointer",transition:"border-color .15s,color .15s"}}>
+                  <input type="checkbox" checked={clienteForm.confereSiga} onChange={e=>patchForm({confereSiga:e.target.checked})} style={{accentColor:"#a78bfa"}}/>
+                  CONFERE SIGA?
+                  {clienteForm.confereSiga&&<span style={{marginLeft:6,fontSize:10,fontWeight:600,color:"#86efac"}}>✓ SIM — aparece na lista do T-SIGA</span>}
+                </label>
+              </div>
               {clienteForm.atividade.toLowerCase().includes("serviço")&&clienteForm.enviaIss&&(
                 <div style={{gridColumn:"1 / -1",background:"#050f1d",border:"1px solid #92400e",borderRadius:10,padding:"14px 16px"}}>
                   <div style={{fontSize:10,fontWeight:800,color:"#fbbf24",letterSpacing:1,textTransform:"uppercase",marginBottom:12}}>🔐 Credenciais ISS</div>
