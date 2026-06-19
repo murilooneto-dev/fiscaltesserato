@@ -116,7 +116,7 @@ async def executar_bot(ws, bot: str, empresas: list, config: dict) -> None:
         await ws.send(json.dumps({"tipo": "bot-erro", "mensagem": msg}))
         return
 
-    env = {**os.environ, "PYTHONIOENCODING": "utf-8"}
+    env = {**os.environ, "PYTHONIOENCODING": "utf-8", "HEADLESS": "true"}
     if config.get("pastaDownloads"):
         env.update({"BOT_ISS_DOWNLOADS": config["pastaDownloads"],
                     "SIGA_DOWNLOADS": config["pastaDownloads"],
@@ -156,8 +156,15 @@ async def executar_bot(ws, bot: str, empresas: list, config: dict) -> None:
                 await ws.send(json.dumps({"tipo": "log", "bot": bot,
                                           "linha": linha, "stream": stream_nome}))
 
-    await asyncio.gather(_ler(_proc_atual.stdout, "stdout"),
-                         _ler(_proc_atual.stderr, "stderr"))
+    try:
+        await asyncio.wait_for(
+            asyncio.gather(_ler(_proc_atual.stdout, "stdout"),
+                           _ler(_proc_atual.stderr, "stderr")),
+            timeout=3600  # 1 hora máximo
+        )
+    except asyncio.TimeoutError:
+        _add_log(f"AVISO: {bot.upper()} excedeu 1 hora — encerrando processo.")
+        _proc_atual.kill()
 
     code = _proc_atual.wait()
     _proc_atual = None

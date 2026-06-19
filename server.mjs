@@ -755,8 +755,20 @@ async function handleApi(req, res) {
     const config = getBotsConfigOperador(operadorId, "iss");
     botRodandoPorOperador.set(operadorId, "iss");
     agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "iss", empresas, config }));
-    broadcastEvent({ type: "bot-iss-started" });
     return sendJson(res, 200, { ok: true, started: true });
+  }
+
+  if (req.url === "/api/bot/stop" && req.method === "POST") {
+    let operadorId = null;
+    try { const b = await readBody(req); operadorId = JSON.parse(b).operadorId; } catch {}
+    if (!operadorId) return sendJson(res, 400, { ok: false, error: "operadorId não informado." });
+    const agente = agentesConectados.get(operadorId);
+    if (agente && agente.readyState === 1) agente.send(JSON.stringify({ tipo: "cancelar-bot" }));
+    botRodandoPorOperador.delete(operadorId);
+    broadcastEvent({ type: "bot-iss-done", operadorId, code: -1 });
+    broadcastEvent({ type: "bot-siga-done", operadorId, code: -1 });
+    broadcastEvent({ type: "bot-mei-done", operadorId, code: -1 });
+    return sendJson(res, 200, { ok: true });
   }
 
   // ── T-SIGA ──────────────────────────────────────────────────────────────────
@@ -784,7 +796,6 @@ async function handleApi(req, res) {
     const config = getBotsConfigOperador(operadorId, "siga");
     botRodandoPorOperador.set(operadorId, "siga");
     agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "siga", empresas, config }));
-    broadcastEvent({ type: "bot-siga-started" });
     return sendJson(res, 200, { ok: true, started: true });
   }
 
@@ -818,7 +829,6 @@ async function handleApi(req, res) {
     const config = getBotsConfigOperador(operadorId, "mei");
     botRodandoPorOperador.set(operadorId, "mei");
     agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "mei", empresas, config }));
-    broadcastEvent({ type: "bot-mei-started" });
     return sendJson(res, 200, { ok: true, started: true });
   }
 
@@ -1021,21 +1031,21 @@ wss.on("connection", (ws) => {
 
     if (msg.tipo === "log") {
       const bot = msg.bot || "iss";
-      broadcastEvent({ type: `bot-${bot}-log`, line: msg.linha, stream: msg.stream || "stdout" });
+      broadcastEvent({ type: `bot-${bot}-log`, operadorId, line: msg.linha, stream: msg.stream || "stdout" });
       return;
     }
 
     if (msg.tipo === "bot-done") {
-      const bot = botRodandoPorOperador.get(operadorId) || "iss";
+      const bot = msg.bot || botRodandoPorOperador.get(operadorId) || "iss";
       botRodandoPorOperador.delete(operadorId);
-      broadcastEvent({ type: `bot-${bot}-done`, code: msg.code });
+      broadcastEvent({ type: `bot-${bot}-done`, operadorId, code: msg.code });
       return;
     }
 
     if (msg.tipo === "bot-erro") {
-      const bot = botRodandoPorOperador.get(operadorId) || "iss";
+      const bot = msg.bot || botRodandoPorOperador.get(operadorId) || "iss";
       botRodandoPorOperador.delete(operadorId);
-      broadcastEvent({ type: `bot-${bot}-error`, code: -1, error: msg.mensagem });
+      broadcastEvent({ type: `bot-${bot}-error`, operadorId, code: -1, error: msg.mensagem });
       return;
     }
   });

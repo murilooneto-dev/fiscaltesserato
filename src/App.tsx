@@ -2161,6 +2161,7 @@ export default function App() {
   const [users,setUsers]=useState(USERS);
   const [clientesData,setClientesData]=useState(clientes_raw);
   const [user,setUser]=useState(null);
+  const userRef=useRef<any>(null);
   const [login,setLogin]=useState("");
   const [senha,setSenha]=useState("");
   const [showSenha,setShowSenha]=useState(false);
@@ -2244,13 +2245,13 @@ export default function App() {
   const [roboissSearch,setRoboissSearch]=useState("");
   const [roboissQueue,setRoboissQueue]=useState<Set<string>>(new Set());
   const [agenteConectado,setAgenteConectado]=useState(false);
+  const [algumAgenteConectado,setAlgumAgenteConectado]=useState(false);
   const [mcUserId,setMcUserId]=useState<number>(0);
   const [roboissRunning,setRoboissRunning]=useState(false);
   const [roboissLog,setRoboissLog]=useState<{text:string,stream:string}[]>([]);
   const [roboissResult,setRoboissResult]=useState<{ok:boolean,msg:string}|null>(null);
   const roboissLogRef=useRef<HTMLDivElement|null>(null);
   const [ferramentasRobo,setFerramentasRobo]=useState<"iss"|"siga"|"mei">("iss");
-  const [robotConfigModal,setRobotConfigModal]=useState<"iss"|"siga"|"mei"|null>(null);
   const [botSigaRunning,setBotSigaRunning]=useState(false);
   const [botSigaLog,setBotSigaLog]=useState<{text:string,stream:string}[]>([]);
   const [botSigaResult,setBotSigaResult]=useState<{ok:boolean,msg:string}|null>(null);
@@ -2441,15 +2442,22 @@ export default function App() {
         if(data.type==="client-files-updated"&&clienteSel?.cnpj){
           loadClientFiles(clienteSel.cnpj).catch(()=>{});
         }
-        if(data.type==="agent-connected"&&data.operadorId===user?.id){setAgenteConectado(true);}
-        if(data.type==="agent-disconnected"&&data.operadorId===user?.id){setAgenteConectado(false);}
-        if(data.type==="bot-iss-started"){setRoboissRunning(true);setRoboissResult(null);setRoboissLog([]);}
-        if(data.type==="bot-iss-log"){setRoboissLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
-        if(data.type==="bot-iss-done"){setRoboissRunning(false);setRoboissResult({ok:true,msg:"Bot concluído com sucesso."});}
-        if(data.type==="bot-iss-error"){setRoboissRunning(false);setRoboissResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
-        if(data.type==="bot-siga-started"){setBotSigaRunning(true);setBotSigaResult(null);setBotSigaLog([]);}
-        if(data.type==="bot-siga-log"){setBotSigaLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
-        if(data.type==="bot-siga-done"){
+        if(data.type==="agent-connected"){
+          setAlgumAgenteConectado(true);
+          if(data.operadorId===user?.id) setAgenteConectado(true);
+        }
+        if(data.type==="agent-disconnected"){
+          if(data.operadorId===user?.id) setAgenteConectado(false);
+          fetch(apiUrl("/api/agent/status")).then(r=>r.json()).then(d=>{
+            setAlgumAgenteConectado((d.conectados||[]).length>0);
+          }).catch(()=>{});
+        }
+        const meuEvento=!data.operadorId||String(data.operadorId)===String(userRef.current?.id);
+        if(data.type==="bot-iss-log"&&meuEvento){setRoboissLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
+        if(data.type==="bot-iss-done"&&meuEvento){setRoboissRunning(false);setRoboissResult({ok:true,msg:"Bot concluído com sucesso."});}
+        if(data.type==="bot-iss-error"&&meuEvento){setRoboissRunning(false);setRoboissResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
+        if(data.type==="bot-siga-log"&&meuEvento){setBotSigaLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
+        if(data.type==="bot-siga-done"&&meuEvento){
           setBotSigaRunning(false);
           setBotSigaResult({ok:true,msg:"Processo concluído com sucesso."});
           setBotSigaToast({ok:true,msg:"T-SIGA finalizado com sucesso!"});
@@ -2457,7 +2465,7 @@ export default function App() {
           else if(Notification.permission!=="denied"){Notification.requestPermission().then(p=>{if(p==="granted")new Notification("T-SIGA",{body:"Processo finalizado com sucesso!",icon:"/favicon.ico"});});}
           setTimeout(()=>setBotSigaToast(null),8000);
         }
-        if(data.type==="bot-siga-error"){
+        if(data.type==="bot-siga-error"&&meuEvento){
           setBotSigaRunning(false);
           const errMsg=data.error||`Erro (código ${data.code})`;
           setBotSigaResult({ok:false,msg:errMsg});
@@ -2465,10 +2473,9 @@ export default function App() {
           if(Notification.permission==="granted"){new Notification("T-SIGA — Erro",{body:errMsg,icon:"/favicon.ico"});}
           setTimeout(()=>setBotSigaToast(null),12000);
         }
-        if(data.type==="bot-mei-started"){setBotMeiRunning(true);setBotMeiResult(null);setBotMeiLog([]);}
-        if(data.type==="bot-mei-log"){setBotMeiLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
-        if(data.type==="bot-mei-done"){setBotMeiRunning(false);setBotMeiResult({ok:true,msg:"Bot concluído com sucesso."});}
-        if(data.type==="bot-mei-error"){setBotMeiRunning(false);setBotMeiResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
+        if(data.type==="bot-mei-log"&&meuEvento){setBotMeiLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
+        if(data.type==="bot-mei-done"&&meuEvento){setBotMeiRunning(false);setBotMeiResult({ok:true,msg:"Bot concluído com sucesso."});}
+        if(data.type==="bot-mei-error"&&meuEvento){setBotMeiRunning(false);setBotMeiResult({ok:false,msg:data.error||`Erro (código ${data.code})`});}
       }catch{}
     };
     source.onerror=()=>setSaveStatus("Sincronização em tempo real tentando reconectar...");
@@ -2487,11 +2494,15 @@ export default function App() {
     fetch(apiUrl("/api/bot-iss/status")).then(r=>r.json()).then(d=>{if(d.running)setRoboissRunning(true);}).catch(()=>{});
     fetch(apiUrl("/api/bot-siga/status")).then(r=>r.json()).then(d=>{if(d.running)setBotSigaRunning(true);}).catch(()=>{});
     fetch(apiUrl("/api/bot-mei/status")).then(r=>r.json()).then(d=>{if(d.running)setBotMeiRunning(true);}).catch(()=>{});
-    fetch(apiUrl("/api/agent/status")).then(r=>r.json()).then(d=>{
-      const online=(d.conectados||[]).some((c:any)=>c.operadorId===user?.id);
-      setAgenteConectado(online);
-    }).catch(()=>{});
   },[]);
+  useEffect(()=>{
+    if(!user?.id) return;
+    fetch(apiUrl("/api/agent/status")).then(r=>r.json()).then(d=>{
+      const lista=d.conectados||[];
+      setAgenteConectado(lista.some((c:any)=>c.operadorId===user.id));
+      setAlgumAgenteConectado(lista.length>0);
+    }).catch(()=>{});
+  },[user?.id]);
   useEffect(()=>{
     if(user?.id) loadAgenda(user.id).catch(()=>{});
   },[user?.id]);
@@ -2892,6 +2903,8 @@ export default function App() {
       setConfigMsg(e?.message||"Cliente removido, mas houve erro ao excluir planilhas.");
     }
   };
+
+  useEffect(()=>{userRef.current=user;},[user]);
 
   const handleLogin=()=>{
     const u=users.find(u=>u.login===login.toLowerCase()&&u.senha===senha);
@@ -3877,7 +3890,7 @@ export default function App() {
           };
 
           const activeCard=botCards.find(b=>b.id===ferramentasRobo)!;
-          const canRun=!activeRunning&&roboissQueue.size>0&&agenteConectado;
+          const canRun=!activeRunning&&roboissQueue.size>0&&algumAgenteConectado;
 
           return(
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -3933,27 +3946,35 @@ export default function App() {
                   Limpar seleção
                 </button>
                 <div style={{flex:1}}/>
-                <button
-                  disabled={!canRun}
-                  title={!agenteConectado?"Inicie o FiscalAgente no seu PC para executar bots":undefined}
-                  onClick={handleRun}
-                  style={{
-                    display:"flex",alignItems:"center",gap:8,padding:"8px 20px",
-                    background:canRun?activeCard.color:"#0d1e30",
-                    border:`1.5px solid ${canRun?activeCard.color:"#1a2f45"}`,
-                    borderRadius:8,
-                    color:canRun?"#040c17":"#2d4a63",
-                    fontWeight:700,fontSize:12,
-                    cursor:canRun?"pointer":"not-allowed",
-                    transition:"all .15s",whiteSpace:"nowrap",
-                  }}
-                >
-                  {activeRunning?(
-                    <><span style={{display:"inline-block",animation:"spin 1s linear infinite",fontSize:12}}>◌</span> Executando…</>
-                  ):(
-                    <><span style={{fontSize:11}}>▶</span> Executar {activeCard.label}{roboissQueue.size>0?` (${roboissQueue.size})`:""}</>
-                  )}
-                </button>
+                {activeRunning?(
+                  <button
+                    onClick={async()=>{
+                      if(!confirm("Deseja interromper o processo em execução?"))return;
+                      await fetch(apiUrl("/api/bot/stop"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({operadorId:user?.id})});
+                    }}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"8px 20px",background:"#450a0a",border:"1.5px solid #991b1b",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}
+                  >
+                    <span style={{fontSize:13}}>■</span> Parar
+                  </button>
+                ):(
+                  <button
+                    disabled={!canRun}
+                    title={!algumAgenteConectado?"Nenhum FiscalAgente conectado — inicie o agente em algum PC":undefined}
+                    onClick={handleRun}
+                    style={{
+                      display:"flex",alignItems:"center",gap:8,padding:"8px 20px",
+                      background:canRun?activeCard.color:"#0d1e30",
+                      border:`1.5px solid ${canRun?activeCard.color:"#1a2f45"}`,
+                      borderRadius:8,
+                      color:canRun?"#040c17":"#2d4a63",
+                      fontWeight:700,fontSize:12,
+                      cursor:canRun?"pointer":"not-allowed",
+                      transition:"all .15s",whiteSpace:"nowrap",
+                    }}
+                  >
+                    <span style={{fontSize:11}}>▶</span> Executar {activeCard.label}{roboissQueue.size>0?` (${roboissQueue.size})`:""}
+                  </button>
+                )}
               </div>
 
               {/* ── Tabela de clientes ── */}
@@ -4082,6 +4103,9 @@ export default function App() {
                     {activeLog.length===0&&(
                       <span style={{color:"#1e3a5a",fontStyle:"italic"}}>aguardando saída do processo…</span>
                     )}
+                    {activeLog.filter(l=>(l.text||"").startsWith("__OK__:")||(l.text||"").startsWith("__ERRO__:")).length===0&&(
+                      <span style={{color:"#1e3a5a",fontStyle:"italic"}}>{activeRunning?"Processando empresas…":"Nenhum resultado ainda."}</span>
+                    )}
                     {activeLog.map((l,i)=>{
                       const txt=l.text||"";
                       if(txt.startsWith("__OK__:")){
@@ -4089,10 +4113,10 @@ export default function App() {
                         const cnpjOk=parts[0]||"";
                         const nomeOk=parts.slice(1).join(":")||cnpjOk;
                         return(
-                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"4px 8px",background:"#052e16",border:"1px solid #166534",borderRadius:6,wordBreak:"break-all",whiteSpace:"pre-wrap"}}>
-                            <span style={{color:"#4ade80",fontWeight:700,fontSize:13}}>✓ OK</span>
-                            <span style={{color:"#86efac"}}>{nomeOk}</span>
-                            <span style={{color:"#4ade80",opacity:0.6,fontSize:10,marginLeft:"auto"}}>{cnpjOk}</span>
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"6px 10px",background:"#052e16",border:"1px solid #166534",borderRadius:6}}>
+                            <span style={{color:"#4ade80",fontWeight:700,fontSize:13}}>✓</span>
+                            <span style={{color:"#86efac",flex:1}}>{nomeOk}</span>
+                            <span style={{color:"#4ade80",opacity:0.5,fontSize:10,fontFamily:"monospace"}}>{cnpjOk}</span>
                           </div>
                         );
                       }
@@ -4101,14 +4125,14 @@ export default function App() {
                         const cnpjErr=parts[0]||"";
                         const nomeErr=parts.slice(1).join(":")||cnpjErr;
                         return(
-                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"4px 8px",background:"#450a0a",border:"1px solid #991b1b",borderRadius:6,wordBreak:"break-all",whiteSpace:"pre-wrap"}}>
-                            <span style={{color:"#f87171",fontWeight:700,fontSize:13}}>✗ ERRO</span>
-                            <span style={{color:"#fca5a5"}}>{nomeErr}</span>
-                            <span style={{color:"#f87171",opacity:0.6,fontSize:10,marginLeft:"auto"}}>{cnpjErr}</span>
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:8,margin:"3px 0",padding:"6px 10px",background:"#450a0a",border:"1px solid #991b1b",borderRadius:6}}>
+                            <span style={{color:"#f87171",fontWeight:700,fontSize:13}}>✗</span>
+                            <span style={{color:"#fca5a5",flex:1}}>{nomeErr}</span>
+                            <span style={{color:"#f87171",opacity:0.5,fontSize:10,fontFamily:"monospace"}}>{cnpjErr}</span>
                           </div>
                         );
                       }
-                      return(<div key={i} style={{color:l.stream==="stderr"?"#f87171":"#4ade80",wordBreak:"break-all",whiteSpace:"pre-wrap"}}>{txt}</div>);
+                      return null;
                     })}
                   </div>
                 </div>
@@ -4585,121 +4609,52 @@ export default function App() {
               </div>
             </div>
 
-            {/* Configurações dos Robôs — botões */}
-            {(()=>{
-              const rcBots=[
-                {id:"iss" as const,label:"T-ISS",color:"#7dd8f0"},
-                {id:"siga" as const,label:"T-SIGA",color:"#a78bfa"},
-                {id:"mei" as const,label:"T-MEI",color:"#6ee7b7"},
-              ];
-              return(
-                <div style={S.card}>
-                  <div style={{fontWeight:700,fontSize:13,color:"#7dd8f0",marginBottom:14,letterSpacing:0.3}}>⚙ Configurações dos Robôs</div>
-                  <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-                    {rcBots.map(b=>{
-                      const rc=appSettings.robotsConfig[b.id];
-                      const configured=!!(rc.pastaDownloads||rc.emailDestinatario);
-                      return(
-                        <button key={b.id} onClick={()=>setRobotConfigModal(b.id)}
-                          style={{display:"flex",alignItems:"center",gap:10,background:"#040d19",border:`1.5px solid ${b.color}44`,borderRadius:10,padding:"12px 18px",cursor:"pointer",transition:"border-color .15s",minWidth:160}}
-                        >
-                          <span style={{width:9,height:9,borderRadius:"50%",background:b.color,flexShrink:0,display:"inline-block"}}/>
-                          <span style={{fontWeight:700,fontSize:13,color:b.color}}>{b.label}</span>
-                          {configured&&<span style={{marginLeft:"auto",fontSize:9,color:"#34d399",fontWeight:700,background:"#052e1b",border:"1px solid #065f46",borderRadius:20,padding:"1px 7px"}}>OK</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Modal de configuração do robô */}
-            {robotConfigModal&&(()=>{
-              const botMeta={iss:{label:"T-ISS",color:"#7dd8f0"},siga:{label:"T-SIGA",color:"#a78bfa"},mei:{label:"T-MEI",color:"#6ee7b7"}};
-              const meta=botMeta[robotConfigModal];
-              const rc=appSettings.robotsConfig[robotConfigModal];
-              const patch=(fields:any)=>setAppSettings(p=>({...p,robotsConfig:{...p.robotsConfig,[robotConfigModal]:{...p.robotsConfig[robotConfigModal],...fields}}}));
-              return(
-                <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}} onClick={()=>setRobotConfigModal(null)}>
-                  <div style={{background:"#071929",border:`1.5px solid ${meta.color}55`,borderRadius:14,padding:"28px 32px",width:420,maxWidth:"94vw",boxShadow:"0 8px 40px rgba(0,0,0,0.6)"}} onClick={e=>e.stopPropagation()}>
-                    {/* Cabeçalho */}
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:22}}>
-                      <span style={{width:10,height:10,borderRadius:"50%",background:meta.color,flexShrink:0,display:"inline-block"}}/>
-                      <span style={{fontWeight:700,fontSize:15,color:meta.color}}>{meta.label}</span>
-                      <span style={{fontSize:12,color:"#475569",marginLeft:2}}>— configurações</span>
-                      <button onClick={()=>setRobotConfigModal(null)} style={{marginLeft:"auto",background:"transparent",border:"none",color:"#475569",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
-                    </div>
-
-                    {/* Pasta de downloads */}
-                    <div style={{marginBottom:18}}>
-                      <div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:1,textTransform:"uppercase",marginBottom:8}}>📁 Pasta de downloads</div>
-                      <input
-                        value={rc.pastaDownloads}
-                        onChange={e=>patch({pastaDownloads:e.target.value})}
-                        placeholder={`C:\\Downloads\\${robotConfigModal.toUpperCase()}`}
-                        style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
-                      />
-                      <div style={{fontSize:10,color:"#2d4a63",marginTop:4}}>Pasta onde os arquivos gerados serão salvos no servidor.</div>
-                    </div>
-
-                    {/* Email */}
-                    <div style={{background:"#040d19",border:"1px solid #1a2f45",borderRadius:10,padding:"14px 16px"}}>
-                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
-                        <div style={{fontSize:10,color:"#64748b",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>✉ Envio por email</div>
-                        <label style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:11,color:rc.emailAtivo?"#34d399":"#475569",fontWeight:600}}>
-                          <input type="checkbox" checked={rc.emailAtivo} onChange={e=>patch({emailAtivo:e.target.checked})} style={{accentColor:meta.color}}/>
-                          {rc.emailAtivo?"Ativo":"Inativo"}
-                        </label>
-                      </div>
-                      <div style={{display:"grid",gap:8,opacity:rc.emailAtivo?1:0.4,pointerEvents:rc.emailAtivo?"auto":"none" as any}}>
-                        <div>
-                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Email remetente</label>
-                          <input value={rc.emailRemetente} onChange={e=>patch({emailRemetente:e.target.value})} placeholder="remetente@gmail.com" style={S.input}/>
-                        </div>
-                        <div>
-                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Senha de app (Gmail)</label>
-                          <input type="password" value={rc.emailSenha} onChange={e=>patch({emailSenha:e.target.value})} placeholder="Senha de app Google" style={S.input}/>
-                        </div>
-                        <div>
-                          <label style={{fontSize:10,color:"#475569",fontWeight:600,letterSpacing:0.8,textTransform:"uppercase",display:"block",marginBottom:3}}>Email destinatário</label>
-                          <input value={rc.emailDestinatario} onChange={e=>patch({emailDestinatario:e.target.value})} placeholder="destinatario@email.com" style={S.input}/>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{marginTop:16,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                      <div style={{fontSize:10,color:"#2d4a63"}}>Salvo automaticamente ao fechar.</div>
-                      <button onClick={()=>setRobotConfigModal(null)}
-                        style={{background:meta.color,border:"none",color:"#040c17",fontWeight:700,fontSize:12,padding:"8px 20px",borderRadius:8,cursor:"pointer"}}
-                      >Fechar</button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
             {/* Gerenciamento de usuários */}
-            <div style={{display:"grid",gridTemplateColumns:"minmax(280px,.8fr) minmax(360px,1.2fr)",gap:14,alignItems:"start"}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,alignItems:"start"}}>
+
+              {/* Formulário */}
               <div style={S.card}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                  <div style={{fontWeight:600,fontSize:13}}>{usuarioEditId?"Editar usuário":"Novo usuário"}</div>
-                  <button onClick={resetUsuarioForm} style={{background:"#334155",border:"none",color:"#cbd5e1",borderRadius:6,padding:"5px 9px",fontSize:11,cursor:"pointer"}}>Novo</button>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:13,color:"#e2eaf8"}}>{usuarioEditId?"Editar usuário":"Novo usuário"}</div>
+                    <div style={{fontSize:10,color:"#475569",marginTop:2}}>Preencha os dados e salve</div>
+                  </div>
+                  {usuarioEditId&&<button onClick={resetUsuarioForm} style={{background:"#1e293b",border:"1px solid #334155",color:"#94a3b8",borderRadius:6,padding:"5px 10px",fontSize:11,cursor:"pointer"}}>+ Novo</button>}
                 </div>
-                <div style={{display:"grid",gap:8}}>
-                  <input value={usuarioForm.name} onChange={e=>setUsuarioForm({...usuarioForm,name:e.target.value})} placeholder="Nome" style={S.input}/>
-                  <input value={usuarioForm.login} onChange={e=>setUsuarioForm({...usuarioForm,login:e.target.value})} placeholder="Login" style={S.input}/>
-                  <input value={usuarioForm.senha} onChange={e=>setUsuarioForm({...usuarioForm,senha:e.target.value})} placeholder="Senha" style={S.input}/>
-                  <select value={usuarioForm.role} onChange={e=>setUsuarioForm({...usuarioForm,role:e.target.value})} style={S.input}>
-                    <option value="operador">Operador</option>
-                    <option value="admin">Admin</option>
-                  </select>
-                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                    <input type="color" value={usuarioForm.color} onChange={e=>setUsuarioForm({...usuarioForm,color:e.target.value})} style={{width:42,height:36,border:"1px solid #334155",borderRadius:8,background:"#0f172a",padding:3}}/>
-                    <button onClick={saveUsuario} style={{flex:1,padding:"10px 14px",borderRadius:8,background:"#6366f1",border:"none",color:"#fff",fontWeight:700,cursor:"pointer"}}>Salvar usuário</button>
+                <div style={{display:"grid",gap:10}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <div>
+                      <label style={{...S.label}}>Nome</label>
+                      <input value={usuarioForm.name} onChange={e=>setUsuarioForm({...usuarioForm,name:e.target.value})} placeholder="Nome completo" style={S.input}/>
+                    </div>
+                    <div>
+                      <label style={{...S.label}}>Login</label>
+                      <input value={usuarioForm.login} onChange={e=>setUsuarioForm({...usuarioForm,login:e.target.value})} placeholder="nome.sobrenome" style={S.input}/>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                    <div>
+                      <label style={{...S.label}}>Senha</label>
+                      <input value={usuarioForm.senha} onChange={e=>setUsuarioForm({...usuarioForm,senha:e.target.value})} placeholder="••••••••" style={S.input}/>
+                    </div>
+                    <div>
+                      <label style={{...S.label}}>Perfil</label>
+                      <select value={usuarioForm.role} onChange={e=>setUsuarioForm({...usuarioForm,role:e.target.value})} style={S.input}>
+                        <option value="operador">Operador</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{...S.label}}>Cor de identificação</label>
+                    <div style={{display:"flex",gap:8,alignItems:"center",marginTop:4}}>
+                      <input type="color" value={usuarioForm.color} onChange={e=>setUsuarioForm({...usuarioForm,color:e.target.value})} style={{width:36,height:36,border:"1px solid #334155",borderRadius:8,background:"#0f172a",padding:2,cursor:"pointer"}}/>
+                      <div style={{width:36,height:36,borderRadius:8,background:usuarioForm.color,border:"1px solid #334155"}}/>
+                      <span style={{fontSize:11,color:"#64748b"}}>{usuarioForm.color}</span>
+                    </div>
                   </div>
                   {usuarioForm.role==="operador"&&(
-                    <div style={{background:"#061729",border:"1px solid #245a7c",borderRadius:8,padding:"10px 12px"}}>
+                    <div style={{background:"#061729",border:"1px solid #1a3a5c",borderRadius:8,padding:"10px 12px"}}>
                       <div style={{fontSize:10,color:"#7dd8f0",fontWeight:800,letterSpacing:0.5,marginBottom:8}}>ACESSO ÀS ABAS</div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                         {ALL_PAGES.map(pg=>{
@@ -4712,27 +4667,45 @@ export default function App() {
                           );
                         })}
                       </div>
-                      <div style={{fontSize:10,color:"#475569",marginTop:7}}>Sem seleção = acesso a todas as abas. Admin sempre acessa tudo.</div>
+                      <div style={{fontSize:10,color:"#334155",marginTop:7}}>Sem seleção = acesso a todas as abas.</div>
                     </div>
                   )}
+                  <button onClick={saveUsuario} style={{padding:"10px 14px",borderRadius:8,background:"linear-gradient(135deg,#6366f1,#4f46e5)",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer",marginTop:2}}>
+                    {usuarioEditId?"Salvar alterações":"Criar usuário"}
+                  </button>
                 </div>
-                <div style={{marginTop:14,display:"flex",flexDirection:"column",gap:7}}>
-                  {[...users].sort(sortByNome).map(u=>(
-                    <div key={u.id} style={{display:"flex",alignItems:"center",gap:8,background:"#0f172a",border:"1px solid #334155",borderRadius:8,padding:"9px 10px"}}>
-                      <div style={{width:8,height:8,borderRadius:"50%",background:u.color}}/>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:700}}>{u.name}</div>
-                        <div style={{fontSize:10,color:"#64748b"}}>{u.login} · {u.role}{u.pages?.length>0?` · ${u.pages.length} abas`:""}</div>
+              </div>
+
+              {/* Lista de usuários */}
+              <div style={S.card}>
+                <div style={{fontWeight:700,fontSize:13,color:"#e2eaf8",marginBottom:4}}>Usuários cadastrados</div>
+                <div style={{fontSize:10,color:"#475569",marginBottom:14}}>{users.length} usuário{users.length!==1?"s":""} no sistema</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {[...users].sort(sortByNome).map(u=>{
+                    const isEditing=usuarioEditId===u.id;
+                    return(
+                      <div key={u.id} style={{display:"flex",alignItems:"center",gap:10,background:isEditing?"#0c1e38":"#0a1628",border:`1px solid ${isEditing?"#3b82f6":"#1a2f45"}`,borderRadius:10,padding:"10px 14px",transition:"border-color .15s"}}>
+                        <div style={{width:32,height:32,borderRadius:8,background:u.color,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontWeight:800,fontSize:13,color:"#fff"}}>
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:12,fontWeight:700,color:"#e2eaf8"}}>{u.name}</div>
+                          <div style={{fontSize:10,color:"#475569",marginTop:1}}>
+                            <span style={{color:"#7dd8f0"}}>{u.login}</span>
+                            {" · "}
+                            <span style={{color:u.role==="admin"?"#a78bfa":"#64748b"}}>{u.role==="admin"?"Admin":"Operador"}</span>
+                            {u.pages?.length>0&&<span style={{color:"#334155"}}>{` · ${u.pages.length} abas`}</span>}
+                          </div>
+                        </div>
+                        <button onClick={()=>editUsuario(u)} style={{background:isEditing?"#1e3a8a":"#1e293b",border:`1px solid ${isEditing?"#3b82f6":"#334155"}`,color:isEditing?"#93c5fd":"#64748b",borderRadius:7,padding:"6px 12px",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                          {isEditing?"Editando":"Editar"}
+                        </button>
                       </div>
-                      <button onClick={()=>editUsuario(u)} style={{background:"#1e40af",border:"none",color:"#dbeafe",borderRadius:6,padding:"5px 9px",fontSize:11,cursor:"pointer"}}>Editar</button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
-              <div style={{...S.card,opacity:.55,pointerEvents:"none" as const,userSelect:"none" as const}}>
-                <div style={{fontWeight:600,fontSize:13,marginBottom:8,color:"#64748b"}}>Dica</div>
-                <div style={{fontSize:12,color:"#475569",lineHeight:1.6}}>Cadastro de empresas e tarefas está disponível na aba <strong style={{color:"#94a3b8"}}>Empresas</strong>.<br/><br/>Configure aqui os usuários, funções e quais abas cada operador pode acessar.</div>
-              </div>
+
             </div>
           </>
           );
