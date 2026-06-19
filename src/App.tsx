@@ -2243,6 +2243,7 @@ export default function App() {
   const [roboissGrupo,setRoboissGrupo]=useState("TODOS");
   const [roboissSearch,setRoboissSearch]=useState("");
   const [roboissQueue,setRoboissQueue]=useState<Set<string>>(new Set());
+  const [agenteConectado,setAgenteConectado]=useState(false);
   const [roboissRunning,setRoboissRunning]=useState(false);
   const [roboissLog,setRoboissLog]=useState<{text:string,stream:string}[]>([]);
   const [roboissResult,setRoboissResult]=useState<{ok:boolean,msg:string}|null>(null);
@@ -2439,6 +2440,8 @@ export default function App() {
         if(data.type==="client-files-updated"&&clienteSel?.cnpj){
           loadClientFiles(clienteSel.cnpj).catch(()=>{});
         }
+        if(data.type==="agent-connected"&&data.operadorId===user?.id){setAgenteConectado(true);}
+        if(data.type==="agent-disconnected"&&data.operadorId===user?.id){setAgenteConectado(false);}
         if(data.type==="bot-iss-started"){setRoboissRunning(true);setRoboissResult(null);setRoboissLog([]);}
         if(data.type==="bot-iss-log"){setRoboissLog(prev=>[...prev,{text:data.line||"",stream:data.stream||"stdout"}]);}
         if(data.type==="bot-iss-done"){setRoboissRunning(false);setRoboissResult({ok:true,msg:"Bot concluído com sucesso."});}
@@ -2483,6 +2486,10 @@ export default function App() {
     fetch(apiUrl("/api/bot-iss/status")).then(r=>r.json()).then(d=>{if(d.running)setRoboissRunning(true);}).catch(()=>{});
     fetch(apiUrl("/api/bot-siga/status")).then(r=>r.json()).then(d=>{if(d.running)setBotSigaRunning(true);}).catch(()=>{});
     fetch(apiUrl("/api/bot-mei/status")).then(r=>r.json()).then(d=>{if(d.running)setBotMeiRunning(true);}).catch(()=>{});
+    fetch(apiUrl("/api/agent/status")).then(r=>r.json()).then(d=>{
+      const online=(d.conectados||[]).some((c:any)=>c.operadorId===user?.id);
+      setAgenteConectado(online);
+    }).catch(()=>{});
   },[]);
   useEffect(()=>{
     if(user?.id) loadAgenda(user.id).catch(()=>{});
@@ -3458,6 +3465,13 @@ export default function App() {
           <select value={mesAtual} onChange={e=>setMesAtual(e.target.value)} style={{...S.input,width:"auto",fontSize:11,padding:"4px 8px"}}>
             {MESES_HIST.map(m=><option key={m} value={m}>{m}</option>)}
           </select>
+          <span
+            title={agenteConectado?"Agente conectado — bots rodam neste PC":"Agente desconectado — inicie o FiscalAgente no seu PC"}
+            style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:agenteConectado?"#4ade80":"#f87171",cursor:"default",userSelect:"none" as any}}
+          >
+            <span style={{fontSize:9}}>{agenteConectado?"●":"○"}</span>
+            {agenteConectado?"Agente online":"Agente offline"}
+          </span>
           <div style={{width:7,height:7,borderRadius:"50%",background:getUserColor(user.name)}}/>
           <span style={{fontSize:12}}>{user.name}</span>
           <span title={saveStatus} style={{fontSize:10,color:saveStatus.includes("salvas")||saveStatus.includes("carregados")||saveStatus.includes("iniciado")?"#7dd8f0":saveStatus.includes("Salvando")?"#fbbf24":"#fca5a5",maxWidth:190,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{saveStatus}</span>
@@ -3862,7 +3876,7 @@ export default function App() {
           };
 
           const activeCard=botCards.find(b=>b.id===ferramentasRobo)!;
-          const canRun=!activeRunning&&roboissQueue.size>0;
+          const canRun=!activeRunning&&roboissQueue.size>0&&agenteConectado;
 
           return(
             <div style={{display:"flex",flexDirection:"column",gap:16}}>
@@ -3920,6 +3934,7 @@ export default function App() {
                 <div style={{flex:1}}/>
                 <button
                   disabled={!canRun}
+                  title={!agenteConectado?"Inicie o FiscalAgente no seu PC para executar bots":undefined}
                   onClick={handleRun}
                   style={{
                     display:"flex",alignItems:"center",gap:8,padding:"8px 20px",
