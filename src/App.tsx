@@ -3838,7 +3838,7 @@ export default function App() {
               setRoboissRunning(true);setRoboissResult(null);setRoboissLog([]);
               try{
                 const empresasIss=selected.map(c=>({cnpj:c.cnpj,nome:c.nome,login:c.loginIss||"",senha:c.senhaIss||"",municipio:c.municipio||"",email:c.emailEnvioIss||""}));
-                const r=await fetch(apiUrl("/api/bot-iss/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas:empresasIss})});
+                const r=await fetch(apiUrl("/api/bot-iss/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas:empresasIss,operadorId:user?.id})});
                 const d=await r.json();
                 if(!d.ok){setRoboissRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
               }catch{setRoboissRunning(false);alert("Erro de conexão.");}
@@ -3846,7 +3846,7 @@ export default function App() {
               setBotSigaRunning(true);setBotSigaResult(null);setBotSigaLog([]);
               try{
                 const empresas=selected.map(c=>({cnpj:c.cnpj,nome:c.nome}));
-                const r=await fetch(apiUrl("/api/bot-siga/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas})});
+                const r=await fetch(apiUrl("/api/bot-siga/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas,operadorId:user?.id})});
                 const d=await r.json();
                 if(!d.ok){setBotSigaRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
               }catch{setBotSigaRunning(false);alert("Erro de conexão.");}
@@ -3854,7 +3854,7 @@ export default function App() {
               setBotMeiRunning(true);setBotMeiResult(null);setBotMeiLog([]);
               try{
                 const empresas=selected.map(c=>({cnpj:c.cnpj,nome:c.nome}));
-                const r=await fetch(apiUrl("/api/bot-mei/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas})});
+                const r=await fetch(apiUrl("/api/bot-mei/run"),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({empresas,operadorId:user?.id})});
                 const d=await r.json();
                 if(!d.ok){setBotMeiRunning(false);alert(d.error||"Erro ao iniciar o bot.");}
               }catch{setBotMeiRunning(false);alert("Erro de conexão.");}

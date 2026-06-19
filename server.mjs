@@ -736,62 +736,26 @@ async function handleApi(req, res) {
   }
 
   if (req.url === "/api/bot-iss/run" && req.method === "POST") {
-    if (botIssProcess !== null) {
-      return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
-    }
-
-    let empresas = [];
+    let empresas = [], operadorId = null;
     try {
       const body = await readBody(req);
-      if (body) empresas = JSON.parse(body).empresas || [];
+      const parsed = JSON.parse(body);
+      empresas = parsed.empresas || [];
+      operadorId = parsed.operadorId || null;
     } catch {}
 
-    const issRc = getRobotsConfig().iss || {};
-    const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
-    const pythonParts = pythonRaw.split(/\s+/);
-    const pythonCmd = pythonParts[0];
-    const runnerPath = path.join(RUNNERS_DIR, "runner_iss.py");
-    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
-    const proc = spawn(pythonCmd, pythonArgs, {
-      cwd: BOT_ISS_DIR,
-      env: {
-        ...process.env,
-        PYTHONIOENCODING: "utf-8",
-        ...(issRc.pastaDownloads   ? { BOT_ISS_DOWNLOADS:       issRc.pastaDownloads }   : {}),
-        ...(issRc.emailRemetente   ? { BOT_ISS_SMTP_USER:       issRc.emailRemetente }   : {}),
-        ...(issRc.emailSenha       ? { BOT_ISS_SMTP_PASS:       issRc.emailSenha }       : {}),
-        ...(issRc.emailDestinatario? { BOT_ISS_EMAIL_DESTINO:   issRc.emailDestinatario }: {}),
-      },
-    });
-
-    botIssProcess = proc;
+    if (!operadorId) return sendJson(res, 400, { ok: false, error: "operadorId não informado." });
+    const agente = agentesConectados.get(operadorId);
+    if (!agente || agente.readyState !== 1) {
+      return sendJson(res, 409, { ok: false, error: "Agente não conectado neste PC. Inicie o FiscalAgente." });
+    }
+    if (botRodandoPorOperador.get(operadorId)) {
+      return sendJson(res, 409, { ok: false, error: "Bot já está em execução neste PC." });
+    }
+    const config = getBotsConfigOperador(operadorId, "iss");
+    botRodandoPorOperador.set(operadorId, "iss");
+    agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "iss", empresas, config }));
     broadcastEvent({ type: "bot-iss-started" });
-
-    const onData = (stream) => (chunk) => {
-      const lines = chunk.toString("utf-8").split(/\r?\n/);
-      for (const line of lines) {
-        if (line.trim()) broadcastEvent({ type: "bot-iss-log", line, stream });
-      }
-    };
-
-    proc.stdout.on("data", onData("stdout"));
-    proc.stderr.on("data", onData("stderr"));
-
-    proc.on("close", (code) => {
-      botIssProcess = null;
-      if (code === 0) {
-        broadcastEvent({ type: "bot-iss-done", code });
-        sendBotEmail(getRobotsConfig().iss, "T-ISS");
-      } else {
-        broadcastEvent({ type: "bot-iss-error", code, error: `Processo encerrado com código ${code}` });
-      }
-    });
-
-    proc.on("error", (err) => {
-      botIssProcess = null;
-      broadcastEvent({ type: "bot-iss-error", code: -1, error: err.message });
-    });
-
     return sendJson(res, 200, { ok: true, started: true });
   }
 
@@ -801,54 +765,26 @@ async function handleApi(req, res) {
   }
 
   if (req.url === "/api/bot-siga/run" && req.method === "POST") {
-    if (botSigaProcess !== null) {
-      return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
-    }
-    let empresas = [];
+    let empresas = [], operadorId = null;
     try {
       const body = await readBody(req);
       const parsed = JSON.parse(body);
       empresas = parsed.empresas || [];
+      operadorId = parsed.operadorId || null;
     } catch {}
 
-    const sigaRc = getRobotsConfig().siga || {};
-    const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
-    const pythonParts = pythonRaw.split(/\s+/);
-    const pythonCmd = pythonParts[0];
-    const runnerPath = path.join(RUNNERS_DIR, "runner_siga.py");
-    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
-    const proc = spawn(pythonCmd, pythonArgs, {
-      env: {
-        ...process.env,
-        PYTHONIOENCODING: "utf-8",
-        ...(sigaRc.pastaDownloads ? { SIGA_DOWNLOADS: sigaRc.pastaDownloads } : {}),
-      },
-    });
-
-    botSigaProcess = proc;
+    if (!operadorId) return sendJson(res, 400, { ok: false, error: "operadorId não informado." });
+    const agente = agentesConectados.get(operadorId);
+    if (!agente || agente.readyState !== 1) {
+      return sendJson(res, 409, { ok: false, error: "Agente não conectado neste PC. Inicie o FiscalAgente." });
+    }
+    if (botRodandoPorOperador.get(operadorId)) {
+      return sendJson(res, 409, { ok: false, error: "Bot já está em execução neste PC." });
+    }
+    const config = getBotsConfigOperador(operadorId, "siga");
+    botRodandoPorOperador.set(operadorId, "siga");
+    agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "siga", empresas, config }));
     broadcastEvent({ type: "bot-siga-started" });
-
-    const onData = (stream) => (chunk) => {
-      const lines = chunk.toString("utf-8").split(/\r?\n/);
-      for (const line of lines) {
-        if (line.trim()) broadcastEvent({ type: "bot-siga-log", line, stream });
-      }
-    };
-    proc.stdout.on("data", onData("stdout"));
-    proc.stderr.on("data", onData("stderr"));
-    proc.on("close", (code) => {
-      botSigaProcess = null;
-      if (code === 0) {
-        broadcastEvent({ type: "bot-siga-done", code });
-        sendBotEmail(getRobotsConfig().siga, "T-SIGA");
-      } else {
-        broadcastEvent({ type: "bot-siga-error", code, error: `Processo encerrado com código ${code}` });
-      }
-    });
-    proc.on("error", (err) => {
-      botSigaProcess = null;
-      broadcastEvent({ type: "bot-siga-error", code: -1, error: err.message });
-    });
     return sendJson(res, 200, { ok: true, started: true });
   }
 
@@ -863,54 +799,26 @@ async function handleApi(req, res) {
   }
 
   if (req.url === "/api/bot-mei/run" && req.method === "POST") {
-    if (botMeiProcess !== null) {
-      return sendJson(res, 409, { ok: false, error: "Bot já está em execução." });
-    }
-    let empresas = [];
+    let empresas = [], operadorId = null;
     try {
       const body = await readBody(req);
       const parsed = JSON.parse(body);
       empresas = parsed.empresas || [];
+      operadorId = parsed.operadorId || null;
     } catch {}
 
-    const meiRc = getRobotsConfig().mei || {};
-    const pythonRaw = (process.env.PYTHON_CMD || "python").trim();
-    const pythonParts = pythonRaw.split(/\s+/);
-    const pythonCmd = pythonParts[0];
-    const runnerPath = path.join(RUNNERS_DIR, "runner_mei.py");
-    const pythonArgs = [...pythonParts.slice(1), runnerPath, JSON.stringify(empresas)];
-    const proc = spawn(pythonCmd, pythonArgs, {
-      env: {
-        ...process.env,
-        PYTHONIOENCODING: "utf-8",
-        ...(meiRc.pastaDownloads ? { MEI_DOWNLOADS: meiRc.pastaDownloads } : {}),
-      },
-    });
-
-    botMeiProcess = proc;
+    if (!operadorId) return sendJson(res, 400, { ok: false, error: "operadorId não informado." });
+    const agente = agentesConectados.get(operadorId);
+    if (!agente || agente.readyState !== 1) {
+      return sendJson(res, 409, { ok: false, error: "Agente não conectado neste PC. Inicie o FiscalAgente." });
+    }
+    if (botRodandoPorOperador.get(operadorId)) {
+      return sendJson(res, 409, { ok: false, error: "Bot já está em execução neste PC." });
+    }
+    const config = getBotsConfigOperador(operadorId, "mei");
+    botRodandoPorOperador.set(operadorId, "mei");
+    agente.send(JSON.stringify({ tipo: "rodar-bot", bot: "mei", empresas, config }));
     broadcastEvent({ type: "bot-mei-started" });
-
-    const onData = (stream) => (chunk) => {
-      const lines = chunk.toString("utf-8").split(/\r?\n/);
-      for (const line of lines) {
-        if (line.trim()) broadcastEvent({ type: "bot-mei-log", line, stream });
-      }
-    };
-    proc.stdout.on("data", onData("stdout"));
-    proc.stderr.on("data", onData("stderr"));
-    proc.on("close", (code) => {
-      botMeiProcess = null;
-      if (code === 0) {
-        broadcastEvent({ type: "bot-mei-done", code });
-        sendBotEmail(getRobotsConfig().mei, "T-MEI");
-      } else {
-        broadcastEvent({ type: "bot-mei-error", code, error: `Processo encerrado com código ${code}` });
-      }
-    });
-    proc.on("error", (err) => {
-      botMeiProcess = null;
-      broadcastEvent({ type: "bot-mei-error", code: -1, error: err.message });
-    });
     return sendJson(res, 200, { ok: true, started: true });
   }
 
