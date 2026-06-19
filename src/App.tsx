@@ -90,11 +90,17 @@ const CardLogo = ({title}:{title:string})=>{
 };
 
 
+const BOTS_CONFIG_VAZIO = {
+  iss:  { pastaDownloads: "", emailRemetente: "", emailSenha: "", emailDestinatario: "" },
+  siga: { pastaDownloads: "", emailRemetente: "", emailSenha: "", emailDestinatario: "" },
+  mei:  { pastaDownloads: "", emailRemetente: "", emailSenha: "", emailDestinatario: "" },
+};
+
 const USERS = [
-  { id: 1, name: "Admin", login: "admin", senha: "admin123", role: "admin", color: "#6366f1" },
-  { id: 2, name: "Sandra", login: "sandra", senha: "sandra123", role: "operador", color: "#ec4899" },
-  { id: 3, name: "Daynne", login: "daynne", senha: "daynne123", role: "operador", color: "#f59e0b" },
-  { id: 4, name: "Gabryela", login: "gabryela", senha: "gabryela123", role: "operador", color: "#10b981" },
+  { id: 1, name: "Admin",    login: "admin",    senha: "admin123",    role: "admin",    color: "#6366f1", botsConfig: { ...BOTS_CONFIG_VAZIO } },
+  { id: 2, name: "Sandra",   login: "sandra",   senha: "sandra123",   role: "operador", color: "#ec4899", botsConfig: { ...BOTS_CONFIG_VAZIO } },
+  { id: 3, name: "Daynne",   login: "daynne",   senha: "daynne123",   role: "operador", color: "#f59e0b", botsConfig: { ...BOTS_CONFIG_VAZIO } },
+  { id: 4, name: "Gabryela", login: "gabryela", senha: "gabryela123", role: "operador", color: "#10b981", botsConfig: { ...BOTS_CONFIG_VAZIO } },
 ];
 
 const TAREFAS_NORMAL = ["ENTRADA","SAIDAS","SIGET","SPEED GOV","ISS","ENV. DAS","PIS/COFINS","ICMS/ICMS ST","IRPJ/CSLL","REINF/INSS","EFD FISCAL","EFD PIS/COFINS"];
@@ -2288,7 +2294,22 @@ export default function App() {
   const parseTarefas=(value)=>normalizeTarefasList(value.split(/\n|,/));
   const applyServerData=(data,{remote=false}={})=>{
     const normalizedClientes=data?.clientesData?.length?normalizeClientesData(data.clientesData):null;
-    if(data?.users?.length) setUsers(data.users);
+    if(data?.users?.length) {
+      const mkBots=(u:any)=>{
+        const mk=(x:any)=>({
+          pastaDownloads: String(x?.pastaDownloads||""),
+          emailRemetente: String(x?.emailRemetente||""),
+          emailSenha:     String(x?.emailSenha||""),
+          emailDestinatario: String(x?.emailDestinatario||""),
+        });
+        const bc=u?.botsConfig||{};
+        return {iss:mk(bc.iss),siga:mk(bc.siga),mei:mk(bc.mei)};
+      };
+      setUsers(prev=>data.users.map((u:any)=>{
+        const base=prev.find((p:any)=>p.id===u.id)||{};
+        return {...base,...u,botsConfig:mkBots(u)};
+      }));
+    }
     if(normalizedClientes){
       setClientesData(normalizedClientes);
       setClienteSel(prev=>prev?normalizedClientes.find(c=>c.cnpj===prev.cnpj)||prev:prev);
