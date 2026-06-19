@@ -2244,6 +2244,7 @@ export default function App() {
   const [roboissSearch,setRoboissSearch]=useState("");
   const [roboissQueue,setRoboissQueue]=useState<Set<string>>(new Set());
   const [agenteConectado,setAgenteConectado]=useState(false);
+  const [mcUserId,setMcUserId]=useState<number>(0);
   const [roboissRunning,setRoboissRunning]=useState(false);
   const [roboissLog,setRoboissLog]=useState<{text:string,stream:string}[]>([]);
   const [roboissResult,setRoboissResult]=useState<{ok:boolean,msg:string}|null>(null);
@@ -4802,8 +4803,8 @@ export default function App() {
 
         {/* MINHA CONTA — configurações de bots por operador */}
         {page==="parametros"&&(()=>{
-          const [mcUserId,setMcUserId]=React.useState<number>(user?.id||0);
-          const userAlvo=(user.role==="admin"?users.find((u:any)=>u.id===mcUserId):user)||user;
+          const mcUserIdEfetivo=mcUserId||user?.id||0;
+          const userAlvo=(user.role==="admin"?users.find((u:any)=>u.id===mcUserIdEfetivo):user)||user;
           const patchBotsConfig=(bot:string,campo:string,valor:string)=>{
             setUsers((prev:any[])=>prev.map((u:any)=>
               u.id===userAlvo.id
@@ -4824,7 +4825,7 @@ export default function App() {
                   <div style={{fontSize:11,color:"#64748b"}}>Pasta de download e e-mail individuais para cada bot neste PC.</div>
                 </div>
                 {user.role==="admin"&&(
-                  <select value={mcUserId} onChange={e=>setMcUserId(Number(e.target.value))} style={{...S.input,width:"auto",marginLeft:"auto"}}>
+                  <select value={mcUserIdEfetivo} onChange={e=>setMcUserId(Number(e.target.value))} style={{...S.input,width:"auto",marginLeft:"auto"}}>
                     {users.map((u:any)=><option key={u.id} value={u.id}>{u.name}</option>)}
                   </select>
                 )}
