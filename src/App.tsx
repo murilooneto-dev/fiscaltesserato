@@ -3448,7 +3448,7 @@ export default function App() {
         <div style={{display:"flex",gap:4}}>
           {(user.role==="admin"
             ?["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","ferramentas","parametros"]
-            :(user.pages?.length>0?user.pages:["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","ferramentas"])
+            :(user.pages?.length>0?user.pages:["intranet","dashboard","clientes","calendario","conferencia","relatorios","historico","cadastros","parcelamentos","ferramentas","parametros"])
           ).map(p=>{
             const lbl:Record<string,string>={intranet:"Intranet",dashboard:"Dashboard",clientes:"Clientes",calendario:"Calendário",conferencia:"Conferência",relatorios:"Relatórios",historico:"Histórico",cadastros:"Empresas",parcelamentos:"Parcelamentos",ferramentas:"⚙ Ferramentas",parametros:"Parâmetros"};
             return(<button key={p} onClick={()=>setPage(p)} style={S.btn(page===p)}>{lbl[p]||p}</button>);
@@ -4784,6 +4784,89 @@ export default function App() {
             </div>
           </>
         )}
+
+        {/* MINHA CONTA — configurações de bots por operador */}
+        {page==="parametros"&&(()=>{
+          const [mcUserId,setMcUserId]=React.useState<number>(user?.id||0);
+          const userAlvo=(user.role==="admin"?users.find((u:any)=>u.id===mcUserId):user)||user;
+          const patchBotsConfig=(bot:string,campo:string,valor:string)=>{
+            setUsers((prev:any[])=>prev.map((u:any)=>
+              u.id===userAlvo.id
+                ?{...u,botsConfig:{...u.botsConfig,[bot]:{...u.botsConfig?.[bot],[campo]:valor}}}
+                :u
+            ));
+          };
+          const bots=[
+            {id:"iss", label:"T-ISS", temEmail:true},
+            {id:"siga",label:"T-SIGA",temEmail:false},
+            {id:"mei", label:"T-MEI", temEmail:true},
+          ];
+          return(
+            <div style={{...S.card,marginBottom:14}}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
+                <div>
+                  <div style={{fontWeight:700,fontSize:13,color:"#7dd8f0",marginBottom:2}}>⚙ Minha Conta — Configurações dos Bots</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Pasta de download e e-mail individuais para cada bot neste PC.</div>
+                </div>
+                {user.role==="admin"&&(
+                  <select value={mcUserId} onChange={e=>setMcUserId(Number(e.target.value))} style={{...S.input,width:"auto",marginLeft:"auto"}}>
+                    {users.map((u:any)=><option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                )}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16}}>
+                {bots.map(bot=>{
+                  const bc=(userAlvo as any)?.botsConfig?.[bot.id]||{};
+                  return(
+                    <div key={bot.id} style={{background:"#040d19",border:"1px solid #1a2f45",borderRadius:10,padding:"14px 16px"}}>
+                      <div style={{fontWeight:700,color:"#7dd8f0",marginBottom:12,fontSize:12,letterSpacing:0.5}}>{bot.label}</div>
+                      <div style={{marginBottom:8}}>
+                        <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>📁 Pasta de download</label>
+                        <input
+                          value={bc.pastaDownloads||""}
+                          onChange={e=>patchBotsConfig(bot.id,"pastaDownloads",e.target.value)}
+                          placeholder={`C:\\${(userAlvo as any)?.name||"Usuario"}\\${bot.id.toUpperCase()}`}
+                          style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
+                        />
+                      </div>
+                      {bot.temEmail&&(<>
+                        <div style={{marginBottom:8}}>
+                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>✉ E-mail remetente</label>
+                          <input
+                            value={bc.emailRemetente||""}
+                            onChange={e=>patchBotsConfig(bot.id,"emailRemetente",e.target.value)}
+                            placeholder="remetente@gmail.com"
+                            style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
+                          />
+                        </div>
+                        <div style={{marginBottom:8}}>
+                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>🔑 Senha de app Gmail</label>
+                          <input
+                            type="password"
+                            value={bc.emailSenha||""}
+                            onChange={e=>patchBotsConfig(bot.id,"emailSenha",e.target.value)}
+                            placeholder="xxxx xxxx xxxx xxxx"
+                            style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>📨 E-mail destinatário padrão</label>
+                          <input
+                            value={bc.emailDestinatario||""}
+                            onChange={e=>patchBotsConfig(bot.id,"emailDestinatario",e.target.value)}
+                            placeholder="destinatario@email.com"
+                            style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
+                          />
+                        </div>
+                      </>)}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{fontSize:10,color:"#334155",marginTop:12}}>As alterações são salvas automaticamente.</div>
+            </div>
+          );
+        })()}
 
         {/* RELATÓRIOS */}
         {page==="relatorios"&&(
