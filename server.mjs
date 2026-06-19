@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 import { spawn } from "node:child_process";
 import nodemailer from "nodemailer";
+import { WebSocketServer } from "ws";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const port = Number(process.env.PORT || 3000);
@@ -18,6 +19,11 @@ const eventClients = new Set();
 let botIssProcess  = null;
 let botSigaProcess = null;
 let botMeiProcess  = null;
+
+// Agentes locais conectados: operadorId → WebSocket
+const agentesConectados = new Map();
+// Bot em execução por operador: operadorId → "iss"|"siga"|"mei"
+const botRodandoPorOperador = new Map();
 const BOT_ISS_DIR   = process.env.BOT_ISS_DIR  || "C:\\Users\\Client\\Documents\\Bot Novo\\bot_iss";
 const RUNNERS_DIR   = path.join(__dirname, "runners");
 
@@ -668,6 +674,21 @@ async function handleApi(req, res) {
     return sendJson(res, 200, { ok: true, running: botIssProcess !== null });
   }
 
+  if (req.url === "/api/agent/status" && req.method === "GET") {
+    try {
+      const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+      const users = row ? (JSON.parse(row.payload).users || []) : [];
+      const conectados = [];
+      for (const [opId] of agentesConectados) {
+        const u = users.find(u => u.id === opId);
+        if (u) conectados.push({ operadorId: opId, nome: u.name });
+      }
+      return sendJson(res, 200, { ok: true, conectados });
+    } catch {
+      return sendJson(res, 200, { ok: true, conectados: [] });
+    }
+  }
+
   // Atualiza uma tarefa individual no state (chamado pelo bot após processar cada empresa)
   // Body: { cnpj, periodo, tarefa, valor }
   // Exemplo: { cnpj: "28917133000146", periodo: "04/2026", tarefa: "ISS", valor: "2026-04-30" }
@@ -1040,6 +1061,99 @@ const server = createServer(async (req, res) => {
     return sendJson(res, 500, { ok: false, error: error.message || "Erro interno." });
   }
 });
+
+// ── Helper: configs do operador no banco ──────────────────────────────────────
+function getBotsConfigOperador(operadorId, bot) {
+  try {
+    const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+    if (!row) return {};
+    const payload = JSON.parse(row.payload);
+    const user = (payload.users || []).find(u => u.id === operadorId);
+    const bc = user?.botsConfig?.[bot] || {};
+    if (!bc.pastaDownloads && !bc.emailRemetente) {
+      return payload.appSettings?.robotsConfig?.[bot] || {};
+    }
+    return bc;
+  } catch { return {}; }
+}
+
+// ── WebSocket /ws/agent ───────────────────────────────────────────────────────
+const wss = new WebSocketServer({ server });
+
+wss.on("connection", (ws) => {
+  let operadorId = null;
+
+  ws.on("message", (raw) => {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.tipo === "auth") {
+      try {
+        const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+        const payload = row ? JSON.parse(row.payload) : {};
+        const found = (payload.users || []).find(u => u.login === msg.login && u.senha === msg.senha);
+        if (!found) {
+          ws.send(JSON.stringify({ tipo: "auth-erro", mensagem: "Credenciais inválidas." }));
+          return;
+        }
+        operadorId = found.id;
+        agentesConectados.set(operadorId, ws);
+        ws.send(JSON.stringify({ tipo: "auth-ok", operadorId, nome: found.name }));
+        broadcastEvent({ type: "agent-connected", operadorId, nome: found.name });
+        console.log(`[WS] Agente conectado: ${found.name} (id=${operadorId})`);
+      } catch (e) {
+        ws.send(JSON.stringify({ tipo: "auth-erro", mensagem: "Erro interno." }));
+      }
+      return;
+    }
+
+    if (!operadorId) return;
+
+    if (msg.tipo === "pong") return;
+
+    if (msg.tipo === "log") {
+      const bot = msg.bot || "iss";
+      broadcastEvent({ type: `bot-${bot}-log`, line: msg.linha, stream: msg.stream || "stdout" });
+      return;
+    }
+
+    if (msg.tipo === "bot-done") {
+      const bot = botRodandoPorOperador.get(operadorId) || "iss";
+      botRodandoPorOperador.delete(operadorId);
+      broadcastEvent({ type: `bot-${bot}-done`, code: msg.code });
+      return;
+    }
+
+    if (msg.tipo === "bot-erro") {
+      const bot = botRodandoPorOperador.get(operadorId) || "iss";
+      botRodandoPorOperador.delete(operadorId);
+      broadcastEvent({ type: `bot-${bot}-error`, code: -1, error: msg.mensagem });
+      return;
+    }
+  });
+
+  const onClose = () => {
+    if (operadorId) {
+      agentesConectados.delete(operadorId);
+      botRodandoPorOperador.delete(operadorId);
+      broadcastEvent({ type: "agent-disconnected", operadorId });
+      console.log(`[WS] Agente desconectado: id=${operadorId}`);
+    }
+  };
+  ws.on("close", onClose);
+  ws.on("error", onClose);
+});
+
+setInterval(() => {
+  for (const [id, ws] of agentesConectados) {
+    if (ws.readyState === ws.OPEN) {
+      ws.send(JSON.stringify({ tipo: "ping" }));
+    } else {
+      agentesConectados.delete(id);
+      broadcastEvent({ type: "agent-disconnected", operadorId: id });
+    }
+  }
+}, 30_000);
 
 server.listen(port, host, () => {
   console.log(`Fiscal System 0.0.1 rodando em http://${host}:${port}`);
