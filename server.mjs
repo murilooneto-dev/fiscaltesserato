@@ -986,12 +986,15 @@ function getBotsConfigOperador(operadorId, bot) {
     const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
     if (!row) return {};
     const payload = JSON.parse(row.payload);
+    const settings = payload.appSettings || {};
     const user = (payload.users || []).find(u => u.id === operadorId);
     const bc = user?.botsConfig?.[bot] || {};
-    if (!bc.pastaDownloads && !bc.emailRemetente) {
-      return payload.appSettings?.robotsConfig?.[bot] || {};
-    }
-    return bc;
+    // SMTP sempre vem das configurações globais
+    const smtpGlobal = {
+      emailRemetente: settings.emailGmailUser || "",
+      emailSenha:     settings.emailGmailPass || "",
+    };
+    return { ...smtpGlobal, ...bc };
   } catch { return {}; }
 }
 

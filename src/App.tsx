@@ -2434,7 +2434,9 @@ export default function App() {
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
           skipNextAutoSaveRef.current=true;
-          loadServerData({remote:true}).catch(()=>{
+          loadServerData({remote:true}).then(()=>{
+            skipNextAutoSaveRef.current=false;
+          }).catch(()=>{
             skipNextAutoSaveRef.current=false;
             setSaveStatus("Não foi possível sincronizar em tempo real.");
           });
@@ -4795,7 +4797,7 @@ export default function App() {
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,flexWrap:"wrap"}}>
                 <div>
                   <div style={{fontWeight:700,fontSize:13,color:"#7dd8f0",marginBottom:2}}>⚙ Minha Conta — Configurações dos Bots</div>
-                  <div style={{fontSize:11,color:"#64748b"}}>Pasta de download e e-mail individuais para cada bot neste PC.</div>
+                  <div style={{fontSize:11,color:"#64748b"}}>Pasta de download e e-mail destinatário para cada bot neste PC.</div>
                 </div>
                 {user.role==="admin"&&(
                   <select value={mcUserIdEfetivo} onChange={e=>setMcUserId(Number(e.target.value))} style={{...S.input,width:"auto",marginLeft:"auto"}}>
@@ -4818,26 +4820,7 @@ export default function App() {
                           style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
                         />
                       </div>
-                      {bot.temEmail&&(<>
-                        <div style={{marginBottom:8}}>
-                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>✉ E-mail remetente</label>
-                          <input
-                            value={bc.emailRemetente||""}
-                            onChange={e=>patchBotsConfig(bot.id,"emailRemetente",e.target.value)}
-                            placeholder="remetente@gmail.com"
-                            style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
-                          />
-                        </div>
-                        <div style={{marginBottom:8}}>
-                          <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>🔑 Senha de app Gmail</label>
-                          <input
-                            type="password"
-                            value={bc.emailSenha||""}
-                            onChange={e=>patchBotsConfig(bot.id,"emailSenha",e.target.value)}
-                            placeholder="xxxx xxxx xxxx xxxx"
-                            style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
-                          />
-                        </div>
+                      {bot.temEmail&&(
                         <div>
                           <label style={{fontSize:10,color:"#64748b",fontWeight:700,display:"block",marginBottom:4}}>📨 E-mail destinatário padrão</label>
                           <input
@@ -4847,7 +4830,7 @@ export default function App() {
                             style={{...S.input,width:"100%",boxSizing:"border-box" as any}}
                           />
                         </div>
-                      </>)}
+                      )}
                     </div>
                   );
                 })}
