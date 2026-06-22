@@ -2606,7 +2606,7 @@ export default function App() {
   };
   const findDetailColumns=(rows)=>{
     const numberPatterns=[/(^|[^a-z])n(umero|um|[roºo])?([^a-z]|$)/,/numero\s*(da\s*)?(nota|nf|nfe)/,/nota\s*fiscal/,/documento/,/doc/];
-    const valuePatterns=[/valor(\s+da)?\s*(nfe|nf|nota)?/,/valor\s*nf/,/valor\s*da\s*nfe/,/vlr/,/total/];
+    const valuePatterns=[/^valor(\s+r\$|\s+rs)?$/,/valor(\s+da)?\s*(nfe|nf|nota)?/,/valor\s*nf/,/valor\s*da\s*nfe/,/vlr/,/total/];
     const senderPatterns=[/fornecedor/,/emitente/,/remetente/];
     const datePatterns=[/emissao/,/data/,/dt/];
     const maxCols=Math.max(0,...rows.map(row=>row.length));
