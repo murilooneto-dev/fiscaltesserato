@@ -2275,10 +2275,8 @@ export default function App() {
   const [agendaFormErr,setAgendaFormErr]=useState("");
   const [agendaSaving,setAgendaSaving]=useState(false);
   const clientIdRef=useRef(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);
-  const skipNextAutoSaveRef=useRef(0);
   const lastSavedAtRef=useRef(null);
-  const isLoadingRemoteRef=useRef(false);
-  const remoteLoadTimerRef=useRef<any>(null);
+  const [hasUnsaved,setHasUnsaved]=useState(false);
 
   const getClientTarefas=(c)=>{
     const tarefas=normalizeTarefasList(c?.tarefas?.length?c.tarefas:getTarefas(c?.grupo));
@@ -2348,6 +2346,7 @@ export default function App() {
       })(),
     });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
+    if(remote) setHasUnsaved(false);
     setSaveStatus(remote?"Atualizado em tempo real.":data?.savedAt?"Dados carregados do banco local.":"Banco local iniciado.");
   };
   const loadServerData=async(options={})=>{
@@ -2380,7 +2379,7 @@ export default function App() {
     return false;
   };
   const persistData=async({manual=false}={})=>{
-    setSaveStatus(manual?"Salvando no banco agora...":"Salvando alterações...");
+    setSaveStatus("Salvando no banco...");
     const r=await fetch(apiUrl("/api/data"),{
       method:"PUT",
       headers:{"Content-Type":"application/json"},
@@ -2389,7 +2388,8 @@ export default function App() {
     if(!r.ok) throw new Error("Falha ao salvar");
     const data=await r.json();
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
-    setSaveStatus(manual?"Alterações confirmadas no banco.":"Alterações salvas no banco local.");
+    setSaveStatus("Salvo com sucesso.");
+    setHasUnsaved(false);
     return data;
   };
   useEffect(()=>{
@@ -2416,17 +2416,8 @@ export default function App() {
   },[]);
   useEffect(()=>{
     if(!dataLoaded) return;
-    if(isLoadingRemoteRef.current) return;
-    if(skipNextAutoSaveRef.current>0){
-      skipNextAutoSaveRef.current--;
-      return;
-    }
-    const id=setTimeout(()=>{
-      persistData()
-        .catch(()=>setSaveStatus("Não foi possível salvar no banco local."));
-    },600);
-    return()=>clearTimeout(id);
-  },[dataLoaded,users,clientesData,state,appSettings,parcelamentos]);
+    setHasUnsaved(true);
+  },[users,clientesData,state,appSettings,parcelamentos]);
   useEffect(()=>{
     if(!dataLoaded||typeof EventSource==="undefined") return;
     const source=new EventSource(apiUrl("/api/events"));
@@ -2436,17 +2427,9 @@ export default function App() {
         if(data.sourceClientId===clientIdRef.current) return;
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
-          if(remoteLoadTimerRef.current) clearTimeout(remoteLoadTimerRef.current);
-          remoteLoadTimerRef.current=setTimeout(()=>{
-            isLoadingRemoteRef.current=true;
-            skipNextAutoSaveRef.current=3;
-            loadServerData({remote:true}).finally(()=>{
-              isLoadingRemoteRef.current=false;
-            }).catch(()=>{
-              skipNextAutoSaveRef.current=0;
-              setSaveStatus("Não foi possível sincronizar em tempo real.");
-            });
-          },1000);
+          loadServerData({remote:true}).catch(()=>{
+            setSaveStatus("Não foi possível sincronizar em tempo real.");
+          });
         }
         if(data.type==="client-files-updated"&&clienteSel?.cnpj){
           loadClientFiles(clienteSel.cnpj).catch(()=>{});
@@ -3497,7 +3480,9 @@ export default function App() {
           </span>
           <div style={{width:7,height:7,borderRadius:"50%",background:getUserColor(user.name)}}/>
           <span style={{fontSize:12}}>{user.name}</span>
-          <span title={saveStatus} style={{fontSize:10,color:saveStatus.includes("salvas")||saveStatus.includes("carregados")||saveStatus.includes("iniciado")?"#7dd8f0":saveStatus.includes("Salvando")?"#fbbf24":"#fca5a5",maxWidth:190,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{saveStatus}</span>
+          {hasUnsaved&&<span style={{fontSize:10,color:"#fbbf24",fontWeight:700}}>● não salvo</span>}
+          <span title={saveStatus} style={{fontSize:10,color:saveStatus.includes("sucesso")?"#7dd8f0":saveStatus.includes("Salvando")?"#fbbf24":"#94a3b8",maxWidth:160,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{saveStatus}</span>
+          <button onClick={()=>persistData({manual:true}).catch(()=>setSaveStatus("Não foi possível salvar."))} style={{background:"#10b981",border:"none",color:"#052e1b",padding:"4px 10px",borderRadius:6,cursor:"pointer",fontSize:11,fontWeight:800}}>Salvar</button>
           <button onClick={()=>setUser(null)} style={{background:"#334155",border:"none",color:"#94a3b8",padding:"4px 10px",borderRadius:6,cursor:"pointer",fontSize:11}}>Sair</button>
         </div>
       </div>
