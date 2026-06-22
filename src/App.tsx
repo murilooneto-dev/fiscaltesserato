@@ -4808,7 +4808,7 @@ export default function App() {
         {/* MINHA CONTA — configurações de bots por operador */}
         {page==="parametros"&&(()=>{
           const mcUserIdEfetivo=mcUserId||user?.id||0;
-          const userAlvo=(user.role==="admin"?users.find((u:any)=>u.id===mcUserIdEfetivo):user)||user;
+          const userAlvo=(users.find((u:any)=>u.id===(user.role==="admin"?mcUserIdEfetivo:user?.id)))||user;
           const patchBotsConfig=(bot:string,campo:string,valor:string)=>{
             setUsers((prev:any[])=>prev.map((u:any)=>
               u.id===userAlvo.id
@@ -4864,7 +4864,7 @@ export default function App() {
                   );
                 })}
               </div>
-              <div style={{fontSize:10,color:"#334155",marginTop:12}}>As alterações são salvas automaticamente.</div>
+              <div style={{fontSize:10,color:"#fbbf24",marginTop:12}}>Clique em <b>Salvar</b> na barra superior para confirmar as alterações.</div>
             </div>
           );
         })()}
