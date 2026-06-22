@@ -701,32 +701,33 @@ async function handleApi(req, res) {
         return sendJson(res, 400, { ok: false, error: "Campos obrigatórios: cnpj, periodo, tarefa." });
       }
 
-      const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
-      if (!row) return sendJson(res, 404, { ok: false, error: "Estado do sistema não encontrado." });
+      let updatedAt;
+      db.transaction(() => {
+        const row = db.prepare("SELECT payload FROM app_data WHERE id = 1").get();
+        if (!row) throw Object.assign(new Error("Estado do sistema não encontrado."), { status: 404 });
 
-      const data = JSON.parse(row.payload);
-      const state = data.state || {};
+        const data = JSON.parse(row.payload);
+        const state = data.state || {};
 
-      // Garante que o path cnpj > periodo > tarefas existe
-      if (!state[cnpj]) state[cnpj] = {};
-      if (!state[cnpj][periodo]) state[cnpj][periodo] = { tarefas: {}, obs: "", mit: "" };
-      if (!state[cnpj][periodo].tarefas) state[cnpj][periodo].tarefas = {};
+        if (!state[cnpj]) state[cnpj] = {};
+        if (!state[cnpj][periodo]) state[cnpj][periodo] = { tarefas: {}, obs: "", mit: "" };
+        if (!state[cnpj][periodo].tarefas) state[cnpj][periodo].tarefas = {};
 
-      state[cnpj][periodo].tarefas[tarefa] = valor ?? "";
+        state[cnpj][periodo].tarefas[tarefa] = valor ?? "";
 
-      // Quando o Bot ISS conclui com sucesso, preenche SPEED GOV automaticamente também
-      if (tarefa === "ISS" && valor && valor !== "ERRO") {
-        state[cnpj][periodo].tarefas["SPEED GOV"] = valor;
-      }
+        // Quando o Bot ISS conclui com sucesso, preenche SPEED GOV automaticamente também
+        if (tarefa === "ISS" && valor && valor !== "ERRO") {
+          state[cnpj][periodo].tarefas["SPEED GOV"] = valor;
+        }
 
-      data.state = state;
-
-      const updatedAt = new Date().toISOString();
-      db.prepare(`
-        INSERT INTO app_data (id, payload, updated_at)
-        VALUES (1, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
-      `).run(JSON.stringify(data), updatedAt);
+        data.state = state;
+        updatedAt = new Date().toISOString();
+        db.prepare(`
+          INSERT INTO app_data (id, payload, updated_at)
+          VALUES (1, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at
+        `).run(JSON.stringify(data), updatedAt);
+      })();
 
       broadcastEvent({ type: "app-data-updated", savedAt: updatedAt, sourceClientId: "bot-iss" });
       return sendJson(res, 200, { ok: true, cnpj, periodo, tarefa, valor, savedAt: updatedAt });

@@ -2277,6 +2277,7 @@ export default function App() {
   const clientIdRef=useRef(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);
   const lastSavedAtRef=useRef(null);
   const [hasUnsaved,setHasUnsaved]=useState(false);
+  const hasUnsavedRef=useRef(false);
 
   const getClientTarefas=(c)=>{
     const tarefas=normalizeTarefasList(c?.tarefas?.length?c.tarefas:getTarefas(c?.grupo));
@@ -2346,7 +2347,7 @@ export default function App() {
       })(),
     });
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
-    if(remote) setHasUnsaved(false);
+    if(remote){ hasUnsavedRef.current=false; setHasUnsaved(false); }
     setSaveStatus(remote?"Atualizado em tempo real.":data?.savedAt?"Dados carregados do banco local.":"Banco local iniciado.");
   };
   const loadServerData=async(options={})=>{
@@ -2389,6 +2390,7 @@ export default function App() {
     const data=await r.json();
     if(data?.savedAt) lastSavedAtRef.current=data.savedAt;
     setSaveStatus("Salvo com sucesso.");
+    hasUnsavedRef.current=false;
     setHasUnsaved(false);
     return data;
   };
@@ -2416,6 +2418,7 @@ export default function App() {
   },[]);
   useEffect(()=>{
     if(!dataLoaded) return;
+    hasUnsavedRef.current=true;
     setHasUnsaved(true);
   },[users,clientesData,state,appSettings,parcelamentos]);
   useEffect(()=>{
@@ -2427,6 +2430,7 @@ export default function App() {
         if(data.sourceClientId===clientIdRef.current) return;
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
+          if(hasUnsavedRef.current) return;
           loadServerData({remote:true}).catch(()=>{
             setSaveStatus("Não foi possível sincronizar em tempo real.");
           });
