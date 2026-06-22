@@ -2434,10 +2434,7 @@ export default function App() {
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
           skipNextAutoSaveRef.current=true;
-          loadServerData({remote:true}).then(()=>{
-            skipNextAutoSaveRef.current=false;
-          }).catch(()=>{
-            skipNextAutoSaveRef.current=false;
+          loadServerData({remote:true}).catch(()=>{
             setSaveStatus("Não foi possível sincronizar em tempo real.");
           });
         }
