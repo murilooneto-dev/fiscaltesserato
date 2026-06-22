@@ -2275,7 +2275,7 @@ export default function App() {
   const [agendaFormErr,setAgendaFormErr]=useState("");
   const [agendaSaving,setAgendaSaving]=useState(false);
   const clientIdRef=useRef(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);
-  const skipNextAutoSaveRef=useRef(false);
+  const skipNextAutoSaveRef=useRef(0);
   const lastSavedAtRef=useRef(null);
 
   const getClientTarefas=(c)=>{
@@ -2414,8 +2414,8 @@ export default function App() {
   },[]);
   useEffect(()=>{
     if(!dataLoaded) return;
-    if(skipNextAutoSaveRef.current){
-      skipNextAutoSaveRef.current=false;
+    if(skipNextAutoSaveRef.current>0){
+      skipNextAutoSaveRef.current--;
       return;
     }
     const id=setTimeout(()=>{
@@ -2433,8 +2433,9 @@ export default function App() {
         if(data.sourceClientId===clientIdRef.current) return;
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
-          skipNextAutoSaveRef.current=true;
+          skipNextAutoSaveRef.current+=2;
           loadServerData({remote:true}).catch(()=>{
+            skipNextAutoSaveRef.current=0;
             setSaveStatus("Não foi possível sincronizar em tempo real.");
           });
         }
