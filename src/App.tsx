@@ -155,7 +155,7 @@ const clientes_raw = [
     "nome": "Loja Simbolica Deus e Humanidade Numero 14",
     "cnpj": "06741201000126",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -166,7 +166,7 @@ const clientes_raw = [
     "nome": "Loja Maçonica Construtores do Amanhã nº 158",
     "cnpj": "46779774000163",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -177,7 +177,7 @@ const clientes_raw = [
     "nome": "A.R.L.S. Jacques de Molay N. 4810",
     "cnpj": "53923209000193",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -188,7 +188,7 @@ const clientes_raw = [
     "nome": "Associação 3 Marias",
     "cnpj": "45080136000197",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -199,7 +199,7 @@ const clientes_raw = [
     "nome": "Colonia de Pescadores",
     "cnpj": "08703718000156",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -210,7 +210,7 @@ const clientes_raw = [
     "nome": "Associação dos Moradores da Vila Marrocos  (procuração expirada)",
     "cnpj": "02632012000164",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "",
     "grupo": "normal",
     "obs": "Declarações Anuais"
@@ -220,7 +220,7 @@ const clientes_raw = [
     "nome": "Augusta e Respeitável Loja Simbolica Jose Simão Abu Marrul N4853",
     "cnpj": "62993238000112",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal",
     "obs": "Declarações Anuais",
@@ -265,7 +265,7 @@ const clientes_raw = [
     "nome": "Sindicato dos Servidores Publicos Municipais de Missão Velha - CE",
     "cnpj": "11844314000197",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal",
     "mit": "06.02.2026"
@@ -275,7 +275,7 @@ const clientes_raw = [
     "nome": "Associação dos Amigos e Pacientes Renais do Cariri",
     "cnpj": "05754763000141",
     "regime": "Isenta",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal",
     "mit": "06.02.2026"
@@ -285,7 +285,7 @@ const clientes_raw = [
     "nome": "Construtora e Empreendimentos São Bento",
     "cnpj": "07387700000120",
     "regime": "Presumido",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal",
     "mit": "06.02.2026"
@@ -295,7 +295,7 @@ const clientes_raw = [
     "nome": "ADF Engenharia e Projetos LTDA + REINF R2000",
     "cnpj": "28917133000146",
     "regime": "Presumido / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal",
     "prioridade": 5,
@@ -306,7 +306,7 @@ const clientes_raw = [
     "nome": "ADF Engenharia e Projetos LTDA",
     "cnpj": "28917133000227",
     "regime": "Presumido / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -315,7 +315,7 @@ const clientes_raw = [
     "nome": "DF Medicina Aplicada LTDA",
     "cnpj": "40620996000152",
     "regime": "Presumido / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "normal",
     "prioridade": 5
@@ -325,7 +325,7 @@ const clientes_raw = [
     "nome": "Fisiopalmeira LTDA (Declarações de extinção)",
     "cnpj": "40403869000100",
     "regime": "Presumido",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -334,7 +334,7 @@ const clientes_raw = [
     "nome": "JD Construtora",
     "cnpj": "49787578000129",
     "regime": "Presumido",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -343,7 +343,7 @@ const clientes_raw = [
     "nome": "JD Construtora (filial)",
     "cnpj": "49787578000200",
     "regime": "Presumido",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -352,7 +352,7 @@ const clientes_raw = [
     "nome": "Instituto de Psiquiatria do Cariri LTDA",
     "cnpj": "47053879000101",
     "regime": "Presumido",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -361,7 +361,7 @@ const clientes_raw = [
     "nome": "Complexo Cultural Shoenberg LTDA",
     "cnpj": "01426689000183",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "normal"
   },
@@ -517,7 +517,7 @@ const clientes_raw = [
     "nome": "Agência Pauta de Noticias LTDA",
     "cnpj": "55474733000150",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -564,7 +564,7 @@ const clientes_raw = [
     "nome": "Ana Munisso Clinica Terapeutica LTDA",
     "cnpj": "54620978000185",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -583,7 +583,7 @@ const clientes_raw = [
     "nome": "Alde Consultoria de Negocios Inclusiva LTDA",
     "cnpj": "55785594000185",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -593,7 +593,7 @@ const clientes_raw = [
     "nome": "Avenida Locações LTDA",
     "cnpj": "24332211000190",
     "regime": "Simples / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -623,7 +623,7 @@ const clientes_raw = [
     "nome": "Beatriz Silton Servicos de Saude LTDA",
     "cnpj": "47282169000145",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -634,7 +634,7 @@ const clientes_raw = [
     "nome": "Boaventura e Lavor Adv e Consultores",
     "cnpj": "10585798000134",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "prioridade": 4,
@@ -663,7 +663,7 @@ const clientes_raw = [
     "nome": "Cavalcante Gestão e Serviços LTDA",
     "cnpj": "63435003000178",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -682,7 +682,7 @@ const clientes_raw = [
     "nome": "Casa da Arvore Produções LTDA",
     "cnpj": "43624299000168",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "prioridade": 5,
@@ -693,7 +693,7 @@ const clientes_raw = [
     "nome": "Centro de Educação Infantil Nana Nenem LTDA",
     "cnpj": "23104319000162",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -704,7 +704,7 @@ const clientes_raw = [
     "nome": "Clinica Tratte LTDA",
     "cnpj": "60799793000182",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -734,7 +734,7 @@ const clientes_raw = [
     "nome": "CN Maquinas LTDA",
     "cnpj": "41766968000100",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -755,7 +755,7 @@ const clientes_raw = [
     "nome": "Correspondente Caixa Aqui Barbalha LTDA",
     "cnpj": "33167960000108",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -775,7 +775,7 @@ const clientes_raw = [
     "nome": "Dra Sally Mariah - Serviços Médicos em Ortopedia e Traumatologia LTDA",
     "cnpj": "12305705000104",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -785,7 +785,7 @@ const clientes_raw = [
     "nome": "Dmattos Centro de Bleza LTDA",
     "cnpj": "50317260000163",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -814,7 +814,7 @@ const clientes_raw = [
     "nome": "Escola Casa da Arvore LTDA",
     "cnpj": "32457736000180",
     "regime": "Simples / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "prioridade": 5,
@@ -896,7 +896,7 @@ const clientes_raw = [
     "nome": "Gonçalves, Sampaio e Santana Advogados Associados",
     "cnpj": "66526397000168",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -905,7 +905,7 @@ const clientes_raw = [
     "nome": "Glam Aplicativo de Servicos da Beleza LTDA",
     "cnpj": "38663934000186",
     "regime": "Simples / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: SM"
@@ -915,7 +915,7 @@ const clientes_raw = [
     "nome": "Greenblox Digital Group LTDA",
     "cnpj": "59378696000137",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -925,7 +925,7 @@ const clientes_raw = [
     "nome": "Hudson Cruz Sociedade Individual de Advocacia",
     "cnpj": "62400388000175",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -935,7 +935,7 @@ const clientes_raw = [
     "nome": "IFF Serviços Administrativos LTDA",
     "cnpj": "60571391000126",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -954,7 +954,7 @@ const clientes_raw = [
     "nome": "J Daniel Nunes LTDA",
     "cnpj": "61938280000178",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -981,7 +981,7 @@ const clientes_raw = [
     "nome": "Jaqueline Pereira Psicologia LTDA",
     "cnpj": "63969548000164",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1019,7 +1019,7 @@ const clientes_raw = [
     "nome": "JN Conect Telecomunicações LTDA",
     "cnpj": "61967458000109",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1038,7 +1038,7 @@ const clientes_raw = [
     "nome": "JT LTDA",
     "cnpj": "59118871000157",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples"
   },
@@ -1084,7 +1084,7 @@ const clientes_raw = [
     "nome": "Juatran Serviços Medicos LTDA",
     "cnpj": "54953519000113",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1094,7 +1094,7 @@ const clientes_raw = [
     "nome": "Juatran Serviços Medicos II LTDA",
     "cnpj": "60061812000179",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1113,7 +1113,7 @@ const clientes_raw = [
     "nome": "LC Medicina LTDA",
     "cnpj": "63072886000107",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -1194,7 +1194,7 @@ const clientes_raw = [
     "nome": "Liege Lorenna Serviços de Psicologia LTDA",
     "cnpj": "50919880000172",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Speed/XML: XML"
@@ -1204,7 +1204,7 @@ const clientes_raw = [
     "nome": "Loger Construções e Consultoria LTDA",
     "cnpj": "42443781000139",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Speed/XML: XML"
@@ -1214,7 +1214,7 @@ const clientes_raw = [
     "nome": "Locações Martins LTDA",
     "cnpj": "47716997000144",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1224,7 +1224,7 @@ const clientes_raw = [
     "nome": "Luna Planejamento e Custos LTDA",
     "cnpj": "63801092000129",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1234,7 +1234,7 @@ const clientes_raw = [
     "nome": "Lucas Cruz Sociedade Unipessoal de Advocacia 07/2026",
     "cnpj": "47888967000115",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1265,7 +1265,7 @@ const clientes_raw = [
     "nome": "Mayara de Freitas Gomes LTDA (bloq - apenas os serviços até comp 03/2026.",
     "cnpj": "61237698000158",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples"
   },
@@ -1292,7 +1292,7 @@ const clientes_raw = [
     "nome": "M Scussiato LTDA",
     "cnpj": "60130020000109",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Speed/XML: XML"
@@ -1359,7 +1359,7 @@ const clientes_raw = [
     "nome": "MN Marketing e Anuncios On-line LTDA 07/2026",
     "cnpj": "52328447000198",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -1427,7 +1427,7 @@ const clientes_raw = [
     "nome": "Maxwell Alves Serviços de Informática LTDA",
     "cnpj": "52913533000168",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1446,7 +1446,7 @@ const clientes_raw = [
     "nome": "Mecanica Fempcar LTDA",
     "cnpj": "54179217000130",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1492,7 +1492,7 @@ const clientes_raw = [
     "nome": "Muleste Software LTDA",
     "cnpj": "60269812000169",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -1511,7 +1511,7 @@ const clientes_raw = [
     "nome": "Nordeste Software LTDA",
     "cnpj": "61270446000120",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -1520,7 +1520,7 @@ const clientes_raw = [
     "nome": "Nova Bossa Eventos",
     "cnpj": "41801047000131",
     "regime": "Simples / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "SANDRA",
     "grupo": "simples",
     "prioridade": 5,
@@ -1550,7 +1550,7 @@ const clientes_raw = [
     "nome": "Ocean empreendimentos e Agencia Digitais LTDA",
     "cnpj": "49231612000184",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1560,7 +1560,7 @@ const clientes_raw = [
     "nome": "Patricia Silva do Nascimento",
     "cnpj": "14161577000190",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -1590,7 +1590,7 @@ const clientes_raw = [
     "nome": "Photonx Soluções Energéticas LTDA",
     "cnpj": "49221256000118",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1600,7 +1600,7 @@ const clientes_raw = [
     "nome": "Race Custom Cuidados Automotivos LTDA",
     "cnpj": "32590696000140",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples"
   },
@@ -1629,7 +1629,7 @@ const clientes_raw = [
     "nome": "Rufino Odonto LTDA",
     "cnpj": "64757765000153",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples"
   },
@@ -1638,7 +1638,7 @@ const clientes_raw = [
     "nome": "Rodrigo Lins Sociedade Individual de Advocacia",
     "cnpj": "58414026000166",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1669,7 +1669,7 @@ const clientes_raw = [
     "nome": "Silva e Silva Servicos e Comercio em Saude LTDA",
     "cnpj": "47314897000191",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples",
     "prioridade": 3,
@@ -1680,7 +1680,7 @@ const clientes_raw = [
     "nome": "Stenio Pereira dos Santos LTDA",
     "cnpj": "21597601000101",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1690,7 +1690,7 @@ const clientes_raw = [
     "nome": "Tarcisio Gomes Engenharia LTDA",
     "cnpj": "64867136000186",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "DAYNNE",
     "grupo": "simples"
   },
@@ -1699,7 +1699,7 @@ const clientes_raw = [
     "nome": "Tesserato Contabilidade LTDA",
     "cnpj": "39741414000107",
     "regime": "Simples / EPP",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1709,7 +1709,7 @@ const clientes_raw = [
     "nome": "Tony Fotos LTDA",
     "cnpj": "65379619000102",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples"
   },
@@ -1718,7 +1718,7 @@ const clientes_raw = [
     "nome": "(inss) TOS Engenharia",
     "cnpj": "24675276000138",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 4,
@@ -1729,7 +1729,7 @@ const clientes_raw = [
     "nome": "USCA Colegio LTDA",
     "cnpj": "36564893000145",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1739,7 +1739,7 @@ const clientes_raw = [
     "nome": "USCA Colegio LTDA filial salgueiro",
     "cnpj": "36564893000307",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "prioridade": 3,
@@ -1750,7 +1750,7 @@ const clientes_raw = [
     "nome": "USCA Colegio LTDA filial Parnamirim PE",
     "cnpj": "36564893000498",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1760,7 +1760,7 @@ const clientes_raw = [
     "nome": "USCA Colegio LTDA Petrolina PE",
     "cnpj": "52809892000170",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples",
     "obs": "Cupom: - | Speed/XML: XML"
@@ -1780,7 +1780,7 @@ const clientes_raw = [
     "nome": "Victor Torquato - Instituto de Medicina e Ensino LTDA",
     "cnpj": "49647577000189",
     "regime": "Simples",
-    "atividade": "Serviço",
+    "atividade": "Servico",
     "responsavel": "GABRYELA",
     "grupo": "simples"
   },
@@ -2189,7 +2189,7 @@ export default function App() {
   const [usuarioForm,setUsuarioForm]=useState({name:"",login:"",senha:"",role:"operador",color:"#6366f1",pages:[]});
   const [clienteEditCnpj,setClienteEditCnpj]=useState(null);
   const [clienteFormOpen,setClienteFormOpen]=useState(false);
-  const [clienteForm,setClienteForm]=useState({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});
+  const [clienteForm,setClienteForm]=useState({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Servico",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});
   const [cnpjFetching,setCnpjFetching]=useState(false);
   const [cnpjFetchErr,setCnpjFetchErr]=useState("");
   // Functional updater helper — never captures stale clienteForm
@@ -2576,14 +2576,41 @@ export default function App() {
     }
   };
   const normalizeInvoiceKey=(value)=>String(value??"").trim().replace(/\D/g,"");
-  const normalizeHeaderText=(value)=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+  const parseMoneyValue=(value)=>{
+    const text=String(value??"").trim().replace(/[R$\s]/gi,"");
+    if(!text) return null;
+    // Formato BR: 1.234,56
+    const cleanBR=text.replace(/\./g,"").replace(",",".");
+    if(/^-?\d+\.\d{1,2}$/.test(cleanBR)){const n=Number(cleanBR);if(Number.isFinite(n)) return n;}
+    // Formato US: 1,234.56
+    const cleanUS=text.replace(/,/g,"");
+    if(/^-?\d+\.\d{1,2}$/.test(cleanUS)){const n=Number(cleanUS);if(Number.isFinite(n)) return n;}
+    return null;
+  };
+  const formatMoney=(value)=>{
+    const n=parseMoneyValue(value);
+    if(n===null) return value||"—";
+    return n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  };
+  const normalizeHeaderText=(value)=>String(value??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9\s]/g,"").replace(/\s+/g," ").trim();
   const looksLikeMoney=(value)=>{
     const text=String(value??"").trim();
     if(!text||extractInvoiceKeysFromCell(text).length>0) return false;
-    const clean=text.replace(/[R$\s]/gi,"").replace(/\./g,"").replace(",",".");
-    if(!/^-?\d+(\.\d{1,2})?$/.test(clean)) return false;
-    const number=Number(clean);
-    return Number.isFinite(number)&&Math.abs(number)>0&&Math.abs(number)<1_000_000_000;
+    // Exige separador decimal — exclui inteiros puros como números de nota (ex: 58420)
+    if(!/[.,]/.test(text)) return false;
+    // Formato BR: 1.234,56 — remove pontos (milhar) e troca vírgula por ponto
+    const cleanBR=text.replace(/[R$\s]/gi,"").replace(/\./g,"").replace(",",".");
+    if(/^-?\d+\.\d{1,2}$/.test(cleanBR)){
+      const n=Number(cleanBR);
+      if(Number.isFinite(n)&&Math.abs(n)>0&&Math.abs(n)<1_000_000_000) return true;
+    }
+    // Formato US: 1,234.56 — remove vírgulas (milhar)
+    const cleanUS=text.replace(/[R$\s]/gi,"").replace(/,/g,"");
+    if(/^-?\d+\.\d{1,2}$/.test(cleanUS)){
+      const n=Number(cleanUS);
+      if(Number.isFinite(n)&&Math.abs(n)>0&&Math.abs(n)<1_000_000_000) return true;
+    }
+    return false;
   };
   const looksLikeSender=(value)=>{
     const text=String(value??"").trim();
@@ -2600,7 +2627,7 @@ export default function App() {
   };
   const findDetailColumns=(rows)=>{
     const numberPatterns=[/(^|[^a-z])n(umero|um|[roºo])?([^a-z]|$)/,/numero\s*(da\s*)?(nota|nf|nfe)/,/nota\s*fiscal/,/documento/,/doc/];
-    const valuePatterns=[/^valor(\s+r\$|\s+rs)?$/,/valor(\s+da)?\s*(nfe|nf|nota)?/,/valor\s*nf/,/valor\s*da\s*nfe/,/vlr/,/total/];
+    const valuePatterns=[/^valor(\s+r)?$/,/^valor\s+r$/,/valor(\s+da)?\s*(nfe|nf|nota)?/,/valor\s*nf/,/valor\s*da\s*nfe/,/vlr/];
     const senderPatterns=[/fornecedor/,/emitente/,/remetente/];
     const datePatterns=[/emissao/,/data/,/dt/];
     const maxCols=Math.max(0,...rows.map(row=>row.length));
@@ -2707,7 +2734,7 @@ export default function App() {
     if(!conferencia?.faltandoSistema?.length) return;
     const rows=conferencia.faltandoSistema.map(item=>({
       "Numero da nota": item.numero||"",
-      "Valor": item.valor||"",
+      "Valor": parseMoneyValue(item.valor)??(item.valor||""),
       "UF": item.uf||"",
       "Chave da nota": item.chaveNota,
       "Emitente/Remetente": item.emitente||"",
@@ -2718,6 +2745,12 @@ export default function App() {
       "Coluna da chave": item.keyCol,
     }));
     const worksheet=XLSX.utils.json_to_sheet(rows);
+    // Aplica formato contábil BR na coluna Valor (coluna B = índice 1)
+    const range=XLSX.utils.decode_range(worksheet["!ref"]||"A1");
+    for(let r=1;r<=range.e.r;r++){
+      const cell=worksheet[XLSX.utils.encode_cell({r,c:1})];
+      if(cell&&typeof cell.v==="number"){cell.t="n";cell.z='#,##0.00';}
+    }
     const workbook=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook,worksheet,"DTE sem SISTEMA");
     const cliente=clientesData.find(c=>c.cnpj===conferencia.clienteId);
@@ -2750,7 +2783,7 @@ export default function App() {
     resetUsuarioForm();
     setConfigMsg("Usuário salvo.");
   };
-  const resetClienteForm=()=>{setClienteEditCnpj(null);setClienteFormOpen(false);setCnpjFetchErr("");setClienteForm({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Serviço",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});setNovaTarefaForm(novaTarefaEmpty);setNovaTarefaOpen(false);setNovaTarefaErro("");};
+  const resetClienteForm=()=>{setClienteEditCnpj(null);setClienteFormOpen(false);setCnpjFetchErr("");setClienteForm({cod:"",nome:"",cnpj:"",regime:"Simples",atividade:"Servico",responsavel:"",grupo:"simples",prioridade:"",declaracaoAnual:false,municipio:"",uf:"",enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:"",confereSiga:false,tarefas:TAREFAS_SIMPLES.join("\n")});setNovaTarefaForm(novaTarefaEmpty);setNovaTarefaOpen(false);setNovaTarefaErro("");};
   const openNewClienteModal=()=>{resetClienteForm();setClienteFormOpen(true);};
   const openEditClienteModal=(c)=>{editClienteConfig(c);setClienteFormOpen(true);};
   const editClienteConfig=(c)=>{
@@ -2844,7 +2877,7 @@ export default function App() {
       nome:clienteForm.nome.trim(),
       cnpj:clienteForm.cnpj.replace(/\D/g,"")||clienteForm.cnpj.trim(),
       regime:clienteForm.regime.trim()||"Simples",
-      atividade:clienteForm.atividade.trim()||"Serviço",
+      atividade:clienteForm.atividade.trim()||"Servico",
       responsavel:clienteForm.responsavel.trim().toUpperCase(),
       grupo:clienteForm.grupo,
       prioridade:clienteForm.prioridade?Number(clienteForm.prioridade):undefined,
@@ -4235,13 +4268,13 @@ export default function App() {
               </select>
               <select value={filtroAtividade} onChange={e=>setFiltroAtividade(e.target.value)} style={{...S.input,width:"auto"}}>
                 <option value="TODOS">Todas as atividades</option>
-                <option value="Serviço">Serviço</option>
-                <option value="Comércio">Comércio</option>
-                <option value="Indústria">Indústria</option>
-                <option value="Serviço/Comércio">Serviço/Comércio</option>
-                <option value="Indústria/Comércio">Indústria/Comércio</option>
-                <option value="Serviço/Indústria">Serviço/Indústria</option>
-                <option value="Serviço/Indústria/Comércio">Serviço/Indústria/Comércio</option>
+                <option value="Servico">Serviço</option>
+                <option value="Comercio">Comércio</option>
+                <option value="Industria">Indústria</option>
+                <option value="Servico/Comercio">Servico/Comercio</option>
+                <option value="Industria/Comercio">Industria/Comercio</option>
+                <option value="Servico/Industria">Servico/Industria</option>
+                <option value="Servico/Industria/Comercio">Servico/Industria/Comercio</option>
               </select>
               <label style={{display:"flex",alignItems:"center",gap:7,background:"#061729",border:"1px solid #245a7c",borderRadius:8,padding:"8px 12px",fontSize:12,color:"#bfefff",fontWeight:700,cursor:"pointer"}}>
                 <input type="checkbox" checked={clientesSomentePendentes} onChange={e=>setClientesSomentePendentes(e.target.checked)}/>
@@ -4430,7 +4463,7 @@ export default function App() {
                             <div key={`${item.key}-${idx}`} style={{background:"#061729",border:"1px solid #245a7c",borderRadius:8,padding:"9px 10px"}}>
                               <div style={{fontSize:12,fontWeight:800,color:"#eef7ff",wordBreak:"break-all"}}>Chave da nota: {item.chaveNotaOriginal||item.chaveNota}</div>
                               <div style={{fontSize:11,color:"#bfefff",marginTop:4}}>
-                                Nota {item.numero||"—"} · UF {item.uf||"—"} · Valor {item.valor||"—"} · Emitente {item.emitente||"—"} · Data {item.data||"—"}
+                                Nota {item.numero||"—"} · UF {item.uf||"—"} · Valor {formatMoney(item.valor)} · Emitente {item.emitente||"—"} · Data {item.data||"—"}
                               </div>
                               <div style={{fontSize:10,color:"#7f9db3",marginTop:3}}>Origem {item.origem} · Aba {item.sheetName} · Linha {item.row} · Coluna {item.keyCol}</div>
                             </div>
@@ -4742,13 +4775,13 @@ export default function App() {
                   </select>
                   <select value={configClienteAtividade} onChange={e=>setConfigClienteAtividade(e.target.value)} style={{...S.input,width:"auto"}}>
                     <option value="TODOS">Todas as atividades</option>
-                    <option value="Serviço">Serviço</option>
-                    <option value="Comércio">Comércio</option>
-                    <option value="Indústria">Indústria</option>
-                    <option value="Serviço/Comércio">Serviço/Comércio</option>
-                    <option value="Indústria/Comércio">Indústria/Comércio</option>
-                    <option value="Serviço/Indústria">Serviço/Indústria</option>
-                    <option value="Serviço/Indústria/Comércio">Serviço/Indústria/Comércio</option>
+                    <option value="Servico">Serviço</option>
+                    <option value="Comercio">Comércio</option>
+                    <option value="Industria">Indústria</option>
+                    <option value="Servico/Comercio">Servico/Comercio</option>
+                    <option value="Industria/Comercio">Industria/Comercio</option>
+                    <option value="Servico/Industria">Servico/Industria</option>
+                    <option value="Servico/Industria/Comercio">Servico/Industria/Comercio</option>
                   </select>
                 </div>
               </div>
@@ -5845,14 +5878,14 @@ ${sectionsHtml||`<p style="color:#94a3b8;text-align:center;padding:24pt;font-siz
               </div>
               <div>
                 <label style={{fontSize:10,color:"#7dd8f0",fontWeight:800,letterSpacing:1,textTransform:"uppercase",marginBottom:4,display:"block"}}>Atividade</label>
-                <select value={clienteForm.atividade} onChange={e=>{const v=e.target.value;patchForm(v.toLowerCase().includes("serviço")?{atividade:v}:{atividade:v,enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:""});}} style={S.input}>
-                  <option value="Serviço">Serviço</option>
-                  <option value="Comércio">Comércio</option>
-                  <option value="Indústria">Indústria</option>
-                  <option value="Serviço/Comércio">Serviço/Comércio</option>
-                  <option value="Indústria/Comércio">Indústria/Comércio</option>
-                  <option value="Serviço/Indústria">Serviço/Indústria</option>
-                  <option value="Serviço/Indústria/Comércio">Serviço/Indústria/Comércio</option>
+                <select value={clienteForm.atividade} onChange={e=>{const v=e.target.value;patchForm(v.toLowerCase().includes("servico")?{atividade:v}:{atividade:v,enviaIss:false,loginIss:"",senhaIss:"",emailEnvioIss:""});}} style={S.input}>
+                  <option value="Servico">Serviço</option>
+                  <option value="Comercio">Comércio</option>
+                  <option value="Industria">Indústria</option>
+                  <option value="Servico/Comercio">Servico/Comercio</option>
+                  <option value="Industria/Comercio">Industria/Comercio</option>
+                  <option value="Servico/Industria">Servico/Industria</option>
+                  <option value="Servico/Industria/Comercio">Servico/Industria/Comercio</option>
                 </select>
               </div>
               {clienteForm.atividade.toLowerCase().includes("serviço")&&(
