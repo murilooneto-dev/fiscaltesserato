@@ -2277,6 +2277,8 @@ export default function App() {
   const clientIdRef=useRef(crypto.randomUUID?.()||`${Date.now()}-${Math.random()}`);
   const skipNextAutoSaveRef=useRef(0);
   const lastSavedAtRef=useRef(null);
+  const isLoadingRemoteRef=useRef(false);
+  const remoteLoadTimerRef=useRef<any>(null);
 
   const getClientTarefas=(c)=>{
     const tarefas=normalizeTarefasList(c?.tarefas?.length?c.tarefas:getTarefas(c?.grupo));
@@ -2414,6 +2416,7 @@ export default function App() {
   },[]);
   useEffect(()=>{
     if(!dataLoaded) return;
+    if(isLoadingRemoteRef.current) return;
     if(skipNextAutoSaveRef.current>0){
       skipNextAutoSaveRef.current--;
       return;
@@ -2433,11 +2436,17 @@ export default function App() {
         if(data.sourceClientId===clientIdRef.current) return;
         if(data.type==="app-data-updated"){
           if(data.savedAt&&data.savedAt===lastSavedAtRef.current) return;
-          skipNextAutoSaveRef.current+=2;
-          loadServerData({remote:true}).catch(()=>{
-            skipNextAutoSaveRef.current=0;
-            setSaveStatus("Não foi possível sincronizar em tempo real.");
-          });
+          if(remoteLoadTimerRef.current) clearTimeout(remoteLoadTimerRef.current);
+          remoteLoadTimerRef.current=setTimeout(()=>{
+            isLoadingRemoteRef.current=true;
+            skipNextAutoSaveRef.current=3;
+            loadServerData({remote:true}).finally(()=>{
+              isLoadingRemoteRef.current=false;
+            }).catch(()=>{
+              skipNextAutoSaveRef.current=0;
+              setSaveStatus("Não foi possível sincronizar em tempo real.");
+            });
+          },1000);
         }
         if(data.type==="client-files-updated"&&clienteSel?.cnpj){
           loadClientFiles(clienteSel.cnpj).catch(()=>{});
